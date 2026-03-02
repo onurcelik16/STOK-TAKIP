@@ -6,6 +6,7 @@ import { db } from '../data/db';
 import { generateToken, authMiddleware, AuthRequest } from '../middleware/auth';
 import { sendVerificationEmail } from '../utils/email';
 import { authLimiter } from '../middleware/rateLimit';
+import { logger } from '../utils/logger';
 
 const router = Router();
 
@@ -80,6 +81,7 @@ router.post('/login', authLimiter, async (req, res) => {
   }
 
   const { email, password } = parsed.data;
+  logger.info({ email }, '[auth] Login attempt');
 
   try {
     const user = db.prepare('SELECT id, email, password_hash, name, role FROM users WHERE email = ?').get(email) as
@@ -87,14 +89,19 @@ router.post('/login', authLimiter, async (req, res) => {
       | undefined;
 
     if (!user) {
+      logger.warn({ email }, '[auth] Login failed: User not found');
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
+    logger.debug('[auth] User found, comparing password');
     const valid = await bcrypt.compare(password, user.password_hash);
+
     if (!valid) {
+      logger.warn({ email }, '[auth] Login failed: Invalid password');
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
+    logger.info({ userId: user.id }, '[auth] Login successful');
     const token = generateToken(user.id);
 
     res.json({
@@ -108,7 +115,7 @@ router.post('/login', authLimiter, async (req, res) => {
       },
     });
   } catch (e: any) {
-    console.error('[auth] login failed', e);
+    logger.error(e, '[auth] login failed');
     res.status(500).json({ error: 'Login failed' });
   }
 });
