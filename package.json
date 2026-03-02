@@ -8,8 +8,9 @@
     "dev:api": "tsx watch src/index.ts",
     "dev:web": "next dev -p 3001",
     "dev:all": "concurrently \"npm run dev:api\" \"npm run dev:web\"",
-    "build": "tsc -p .",
+    "build": "tsc -p tsconfig.server.json && next build",
     "start": "node dist/index.js",
+    "start:web": "next start -p 3001",
     "check-db": "node scripts/check-db.js"
   },
   "dependencies": {
