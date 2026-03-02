@@ -13,6 +13,8 @@
     "check-db": "node scripts/check-db.js"
   },
   "dependencies": {
+    "@types/cors": "^2.8.19",
+    "@types/morgan": "^1.9.10",
     "axios": "^1.7.7",
     "bcryptjs": "^2.4.3",
     "better-sqlite3": "^9.6.0",
