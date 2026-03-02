@@ -14,12 +14,25 @@ function ensureDirExists(filePath: string) {
 export let db: Database.Database;
 
 export function ensureDatabaseInitialized() {
-  ensureDirExists(dbPath);
-  db = new Database(dbPath);
-  db.pragma('journal_mode = WAL');
+  console.log(`[db] Initializing database at: ${dbPath}`);
+  try {
+    ensureDirExists(dbPath);
+    console.log('[db] Directory checked/created.');
+
+    db = new Database(dbPath);
+    console.log('[db] Database connection established.');
+
+    db.pragma('journal_mode = WAL');
+    console.log('[db] WAL mode enabled.');
+  } catch (err: any) {
+    console.error('[db] CRITICAL: Failed to initialize database:', err.message);
+    if (err.code === 'EACCES' || err.code === 'EROFS') {
+      console.error('[db] SUGGESTION: This looks like a permissions or read-only filesystem error. Check Railway Volumes!');
+    }
+    throw err;
+  }
 
   // First, check and migrate existing tables
-  // Migrations for existing databases (BEFORE creating new tables)
   try {
     const tables = db.prepare("SELECT name FROM sqlite_master WHERE type='table'").all() as Array<{ name: string }>;
     const tableNames = tables.map((t) => t.name);
