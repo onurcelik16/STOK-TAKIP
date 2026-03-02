@@ -22,7 +22,7 @@ export function createServer() {
   app.use(express.json({ limit: '10kb' })); // Limit JSON size
 
   app.use((req, _res, next) => {
-    console.log(`[req] ${req.method} ${req.url}`);
+    logger.info({ method: req.method, url: req.url, ip: req.ip }, '[req] Incoming request');
     next();
   });
 

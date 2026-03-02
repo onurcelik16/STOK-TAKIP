@@ -17,22 +17,35 @@ process.on('uncaughtException', (err) => {
 });
 
 async function main() {
-  logger.info('Starting application...');
+  logger.info({
+    env: process.env.NODE_ENV,
+    port: process.env.PORT,
+    node: process.version
+  }, 'Application process starting');
 
   try {
     ensureDatabaseInitialized();
-    logger.info('Database initialized successfully');
+    logger.info('[db] Database ready');
   } catch (err) {
-    logger.error(err, 'Failed to initialize database');
+    logger.fatal(err, '[db] Failed to initialize database');
     process.exit(1);
   }
 
   const app = createServer();
   const port = process.env.PORT ? Number(process.env.PORT) : 3000;
 
-  app.listen(port, '0.0.0.0', () => {
-    logger.info(`[api] server running at http://0.0.0.0:${port}`);
-    console.log(`SERVER_READY_ON_PORT_${port}`); // Railway/Docker logs for visibility
+  const server = app.listen(port, '0.0.0.0', () => {
+    logger.info(`[api] server listening on 0.0.0.0:${port}`);
+    console.log(`READY_ON_PORT_${port}`);
+  });
+
+  // Keep-alive heartbeat every 30s
+  setInterval(() => {
+    logger.debug('[system] Heartbeat: process is alive');
+  }, 30000);
+
+  server.on('error', (err) => {
+    logger.error(err, '[api] Server error');
   });
 
   scheduleStockChecks();
