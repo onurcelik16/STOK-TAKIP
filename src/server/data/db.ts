@@ -1,6 +1,7 @@
 import Database from 'better-sqlite3';
 import path from 'node:path';
 import fs from 'node:fs';
+import { logger } from '../utils/logger';
 
 const dbPath = process.env.DB_PATH || path.join(process.cwd(), 'data', 'app.sqlite');
 
@@ -14,20 +15,20 @@ function ensureDirExists(filePath: string) {
 export let db: Database.Database;
 
 export function ensureDatabaseInitialized() {
-  console.log(`[db] Initializing database at: ${dbPath}`);
+  logger.info({ dbPath }, '[db] Initializing database');
   try {
     ensureDirExists(dbPath);
-    console.log('[db] Directory checked/created.');
+    logger.debug('[db] Directory checked/created');
 
     db = new Database(dbPath);
-    console.log('[db] Database connection established.');
+    logger.info('[db] Database connection established');
 
     db.pragma('journal_mode = WAL');
-    console.log('[db] WAL mode enabled.');
+    logger.debug('[db] WAL mode enabled');
   } catch (err: any) {
-    console.error('[db] CRITICAL: Failed to initialize database:', err.message);
+    logger.fatal(err, '[db] CRITICAL: Failed to initialize database');
     if (err.code === 'EACCES' || err.code === 'EROFS') {
-      console.error('[db] SUGGESTION: This looks like a permissions or read-only filesystem error. Check Railway Volumes!');
+      logger.error('[db] SUGGESTION: This looks like a permissions or read-only filesystem error. Check Railway Volumes!');
     }
     throw err;
   }
