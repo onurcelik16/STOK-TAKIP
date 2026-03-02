@@ -1,0 +1,71 @@
+import express from 'express';
+import productsRouter from './routes/products';
+import authRouter from './routes/auth';
+import adminRouter from './routes/admin';
+import notificationsRouter from './routes/notifications';
+import proxyRouter from './routes/proxy';
+import helmet from 'helmet';
+import cors from 'cors';
+import morgan from 'morgan';
+import { logger } from './utils/logger';
+
+export function createServer() {
+  const app = express();
+
+  // Security & Logging
+  app.use(helmet());
+  app.use(cors({
+    origin: process.env.CORS_ORIGIN || 'http://localhost:3001',
+    credentials: true
+  }));
+  app.use(morgan('dev'));
+  app.use(express.json({ limit: '10kb' })); // Limit JSON size
+
+  app.use((req, _res, next) => {
+    console.log(`[req] ${req.method} ${req.url}`);
+    next();
+  });
+
+  app.get('/', (_req, res) => {
+    res.json({
+      name: 'stock-tracker',
+      ok: true,
+      endpoints: {
+        health: '/health',
+        products: {
+          list: '/products',
+          create: '/products',
+          detail: '/products/:id',
+          delete: '/products/:id',
+        },
+      },
+    });
+  });
+
+  app.get('/health', (_req, res) => {
+    res.json({ ok: true });
+  });
+
+  app.use('/auth', authRouter);
+  app.use('/products', productsRouter);
+  app.use('/admin', adminRouter);
+  app.use('/notifications', notificationsRouter);
+  app.use('/proxy', proxyRouter);
+
+  // Global Error Handler
+  app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+    const status = err.status || 500;
+    const message = err.message || 'Something went wrong';
+
+    logger.error(`[Error] ${status} - ${message} - ${req.method} ${req.url}`);
+
+    res.status(status).json({
+      error: message,
+      code: err.code || 'INTERNAL_ERROR'
+    });
+  });
+
+  return app;
+}
+
+
