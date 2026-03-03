@@ -33,7 +33,7 @@ export function authMiddleware(req: AuthRequest, res: Response, next: NextFuncti
       return res.status(401).json({ error: 'User no longer exists' });
     }
 
-    if (!user.is_verified && !req.path.includes('/verify') && !req.path.includes('/me')) {
+    if (!user.is_verified && !req.path.includes('/verify') && !req.path.includes('/me') && !req.path.includes('/resend-code')) {
       return res.status(403).json({
         error: 'Hesabınız henüz doğrulanmadı. Lütfen e-postanıza gelen kodu onaylayın.',
         code: 'EMAIL_NOT_VERIFIED'
