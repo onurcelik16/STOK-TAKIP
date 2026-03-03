@@ -40,7 +40,7 @@ router.post('/register', authLimiter, async (req, res) => {
     // Assign role: first user = admin, rest = user
     const userCount = (db.prepare('SELECT COUNT(*) as count FROM users').get() as any)?.count || 0;
     const role = userCount === 0 ? 'admin' : 'user';
-    const isVerified = 0;
+    const isVerified = role === 'admin' ? 1 : 0;
 
     // Create user
     const stmt = db.prepare(
