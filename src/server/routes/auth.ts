@@ -111,7 +111,7 @@ router.post('/login', authLimiter, async (req, res) => {
         email: user.email,
         name: user.name,
         role: user.role,
-        is_verified: !!(user as any).is_verified
+        is_verified: user.role === 'admin' || !!(user as any).is_verified
       },
     });
   } catch (e: any) {
