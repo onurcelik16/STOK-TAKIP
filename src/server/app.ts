@@ -12,22 +12,25 @@ import { logger } from './utils/logger';
 export function createServer() {
   const app = express();
 
-  // Security & Logging
-  app.use(helmet({
-    crossOriginResourcePolicy: { policy: "cross-origin" }
-  }));
-
-  app.use(cors({
-    origin: true, // Allow all origins for now to fix connection issues
-    credentials: true
-  }));
-  app.use(morgan('dev'));
-  app.use(express.json({ limit: '10kb' })); // Limit JSON size
-
+  // 1. Log every single incoming bit
   app.use((req, _res, next) => {
     logger.info({ method: req.method, url: req.url, ip: req.ip }, '[req] Incoming request');
     next();
   });
+
+  // 2. Permissive CORS for cross-domain debugging
+  app.use(cors({
+    origin: true,
+    credentials: true
+  }));
+
+  // 3. Security (Temporarily reduced for debugging)
+  app.use(helmet({
+    crossOriginResourcePolicy: { policy: "cross-origin" }
+  }));
+
+  app.use(morgan('dev'));
+  app.use(express.json({ limit: '10kb' }));
 
   app.get('/', (_req, res) => {
     res.json({
