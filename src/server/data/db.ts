@@ -51,6 +51,8 @@ export function ensureDatabaseInitialized() {
         size TEXT,
         name TEXT,
         image_url TEXT,
+        category TEXT,
+        tags TEXT,
         created_at TEXT NOT NULL DEFAULT (datetime('now', 'localtime'))
       );
 
@@ -112,6 +114,14 @@ export function ensureDatabaseInitialized() {
     if (!productColNames.includes('size')) {
       db.exec("ALTER TABLE products ADD COLUMN size TEXT;");
       logger.info('[db] migrated: added size to products');
+    }
+    if (!productColNames.includes('category')) {
+      db.exec("ALTER TABLE products ADD COLUMN category TEXT;");
+      logger.info('[db] migrated: added category to products');
+    }
+    if (!productColNames.includes('tags')) {
+      db.exec("ALTER TABLE products ADD COLUMN tags TEXT;");
+      logger.info('[db] migrated: added tags to products');
     }
 
     const userCols = db.prepare("PRAGMA table_info(users)").all() as any[];
