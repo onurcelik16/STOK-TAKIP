@@ -13,9 +13,12 @@ export function createServer() {
   const app = express();
 
   // Security & Logging
-  app.use(helmet());
+  app.use(helmet({
+    crossOriginResourcePolicy: { policy: "cross-origin" }
+  }));
+
   app.use(cors({
-    origin: process.env.CORS_ORIGIN || 'http://localhost:3001',
+    origin: true, // Allow all origins for now to fix connection issues
     credentials: true
   }));
   app.use(morgan('dev'));
