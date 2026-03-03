@@ -3,7 +3,8 @@
 import './globals.css';
 import { Sidebar } from '@/components/Sidebar';
 import { Header } from '@/components/Header';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
+import { useEffect } from 'react';
 
 export default function RootLayout({
   children,
@@ -11,7 +12,30 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   const pathname = usePathname();
-  const isFullPage = pathname === '/' || pathname === '/login' || pathname === '/register' || pathname === '/landing';
+  const router = useRouter();
+  const isPublicPage = pathname === '/' || pathname === '/login' || pathname === '/register' || pathname === '/landing';
+  const isVerifyPage = pathname === '/verify';
+
+  // Verification & Auth Guard
+  useEffect(() => {
+    // Skip guard for public pages
+    if (isPublicPage) return;
+
+    const token = sessionStorage.getItem('token');
+    const userStr = sessionStorage.getItem('user');
+
+    if (!token || !userStr) {
+      router.push('/login');
+      return;
+    }
+
+    const user = JSON.parse(userStr);
+    if (!user.is_verified && !isVerifyPage) {
+      router.push('/verify');
+    }
+  }, [pathname, isPublicPage, isVerifyPage]);
+
+  const isFullPage = isPublicPage || isVerifyPage;
 
   return (
     <html lang="tr" className="h-full bg-slate-50">

@@ -150,6 +150,26 @@ router.post('/verify', authMiddleware, async (req: AuthRequest, res) => {
   }
 });
 
+// Resend verification code
+router.post('/resend-code', authMiddleware, async (req: AuthRequest, res) => {
+  try {
+    const user = db.prepare('SELECT email, is_verified FROM users WHERE id = ?').get(req.userId!) as { email: string, is_verified: number } | undefined;
+
+    if (!user) return res.status(404).json({ error: 'Kullanıcı bulunamadı' });
+    if (user.is_verified) return res.status(400).json({ error: 'Hesap zaten doğrulanmış' });
+
+    const newCode = Math.floor(100000 + Math.random() * 900000).toString();
+    db.prepare('UPDATE users SET verification_code = ? WHERE id = ?').run(newCode, req.userId!);
+
+    sendVerificationEmail(user.email, newCode);
+    logger.info({ userId: req.userId }, '[auth] Verification code resent');
+
+    res.json({ success: true, message: 'Yeni doğrulama kodu e-postanıza gönderildi' });
+  } catch (e: any) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // Get current user profile
 router.get('/me', authMiddleware, (req: AuthRequest, res) => {
   try {

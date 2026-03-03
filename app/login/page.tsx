@@ -31,6 +31,7 @@ export default function Login() {
   const [name, setName] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [success, setSuccess] = useState<string | null>(null);
 
   const strength = useMemo(() => getPasswordStrength(password), [password]);
   const passwordsMatch = password === passwordConfirm;
@@ -65,10 +66,24 @@ export default function Login() {
       }
 
       const data = await res.json();
+
+      if (isRegister) {
+        setIsRegister(false);
+        setSuccess('Hesabınız oluşturuldu! Lütfen şimdi giriş yapın.');
+        setPassword('');
+        setPasswordConfirm('');
+        setName('');
+        return;
+      }
+
       sessionStorage.setItem('token', data.token);
       sessionStorage.setItem('user', JSON.stringify(data.user));
 
-      router.push('/dashboard');
+      if (data.user.is_verified === false) {
+        router.push('/verify');
+      } else {
+        router.push('/dashboard');
+      }
     } catch (e: any) {
       setError(e.message || (isRegister ? 'Kayıt başarısız' : 'Giriş başarısız'));
     } finally {
@@ -221,6 +236,13 @@ export default function Login() {
                   Kişisel verilerimin işlenmesini ve <span className="text-indigo-400 hover:underline">kullanım koşullarını</span> kabul ediyorum.
                 </span>
               </label>
+            )}
+
+            {success && (
+              <div className="bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 px-4 py-3 rounded-xl text-sm font-medium flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 shrink-0" />
+                {success}
+              </div>
             )}
 
             {error && (
