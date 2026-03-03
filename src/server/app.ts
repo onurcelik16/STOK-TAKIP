@@ -43,7 +43,15 @@ export function createServer() {
   });
 
   app.get('/health', (_req, res) => {
-    res.json({ ok: true });
+    try {
+      // Simple query to verify DB is alive
+      const { db } = require('./data/db');
+      db.prepare('SELECT 1').get();
+      res.json({ ok: true, database: 'connected' });
+    } catch (err: any) {
+      logger.error(err, '[health] Database check failed');
+      res.status(503).json({ ok: false, error: 'Database not ready' });
+    }
   });
 
   app.use('/auth', authRouter);
