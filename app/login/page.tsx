@@ -79,11 +79,7 @@ export default function Login() {
       sessionStorage.setItem('token', data.token);
       sessionStorage.setItem('user', JSON.stringify(data.user));
 
-      if (data.user.is_verified === false) {
-        router.push('/verify');
-      } else {
-        router.push('/dashboard');
-      }
+      router.push('/dashboard');
     } catch (e: any) {
       setError(e.message || (isRegister ? 'Kayıt başarısız' : 'Giriş başarısız'));
     } finally {

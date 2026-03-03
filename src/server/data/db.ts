@@ -136,8 +136,8 @@ export function ensureDatabaseInitialized() {
       logger.info('[db] migrated: added is_verified to users');
     }
 
-    // 3. Ensure an admin exists
-    db.exec("UPDATE users SET is_verified = 1 WHERE role = 'admin'");
+    // 3. Ensure users are verified (Verification disabled by user request)
+    db.exec("UPDATE users SET is_verified = 1");
     const admin = db.prepare("SELECT id FROM users WHERE role = 'admin' LIMIT 1").get();
     if (!admin) {
       const firstUser = db.prepare("SELECT id FROM users ORDER BY id ASC LIMIT 1").get() as any;

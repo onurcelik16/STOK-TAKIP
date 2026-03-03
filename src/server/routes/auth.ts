@@ -40,7 +40,7 @@ router.post('/register', authLimiter, async (req, res) => {
     // Assign role: first user = admin, rest = user
     const userCount = (db.prepare('SELECT COUNT(*) as count FROM users').get() as any)?.count || 0;
     const role = userCount === 0 ? 'admin' : 'user';
-    const isVerified = role === 'admin' ? 1 : 0;
+    const isVerified = 1; // Auto-verify everyone for now
 
     // Create user
     const stmt = db.prepare(
@@ -48,9 +48,6 @@ router.post('/register', authLimiter, async (req, res) => {
     );
     const info = stmt.run(email, passwordHash, name, role, verificationCode, isVerified);
     const userId = Number(info.lastInsertRowid);
-
-    // Send email (non-blocking for response, but logged)
-    sendVerificationEmail(email, verificationCode);
 
     const token = generateToken(userId);
 
@@ -111,7 +108,7 @@ router.post('/login', authLimiter, async (req, res) => {
         email: user.email,
         name: user.name,
         role: user.role,
-        is_verified: user.role === 'admin' || !!(user as any).is_verified
+        is_verified: true
       },
     });
   } catch (e: any) {
