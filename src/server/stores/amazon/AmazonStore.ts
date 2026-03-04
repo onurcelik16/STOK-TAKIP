@@ -21,6 +21,8 @@ export const AmazonStore: StoreScraper = {
 
         let inStock: boolean | null = null;
         let price: number | null = null;
+        let productName: string | null = null;
+        let imageUrl: string | null = null;
 
         // Strategy 1: HTTP request
         try {
@@ -83,20 +85,31 @@ export const AmazonStore: StoreScraper = {
                         const data = JSON.parse($(el).html() || '{}');
                         const items = Array.isArray(data) ? data : [data];
                         for (const item of items) {
-                            if (item['@type'] === 'Product' && item.offers) {
-                                const offers = Array.isArray(item.offers) ? item.offers : [item.offers];
-                                for (const offer of offers) {
-                                    if (offer.availability && inStock === null) inStock = offer.availability.includes('InStock');
-                                    if (offer.price && price === null) price = parseFloat(offer.price);
+                            if (item['@type'] === 'Product') {
+                                if (!productName && item.name) productName = item.name;
+                                if (!imageUrl && item.image) {
+                                    const img = Array.isArray(item.image) ? item.image[0] : item.image;
+                                    imageUrl = typeof img === 'string' ? img : (img?.contentUrl || null);
+                                }
+                                if (item.offers) {
+                                    const offers = Array.isArray(item.offers) ? item.offers : [item.offers];
+                                    for (const offer of offers) {
+                                        if (offer.availability && inStock === null) inStock = offer.availability.includes('InStock');
+                                        if (offer.price && price === null) price = parseFloat(offer.price);
+                                    }
                                 }
                             }
                         }
                     } catch (e) { /* ignore */ }
                 });
 
+                // Fallback: OG tags and DOM for name/image
+                if (!productName) productName = $('meta[property="og:title"]').attr('content') || $('#productTitle').text().trim() || null;
+                if (!imageUrl) imageUrl = $('meta[property="og:image"]').attr('content') || $('#landingImage').attr('src') || null;
+
                 if (inStock !== null) {
-                    console.log(`[AmazonStore] HTTP Result: inStock=${inStock}, price=${price}`);
-                    return { inStock, price, source: 'http' };
+                    console.log(`[AmazonStore] HTTP Result: inStock=${inStock}, price=${price}, name=${productName}`);
+                    return { inStock, price, source: 'http' as const, productName, imageUrl };
                 }
                 console.log(`[AmazonStore] HTTP partial result: inStock=${inStock}, price=${price}`);
             }
@@ -141,7 +154,11 @@ export const AmazonStore: StoreScraper = {
                     }
                 }
 
-                return { inStock: inStock ?? false, price, source: 'browser' };
+                // Extract name/image from rendered page
+                if (!productName) productName = $('meta[property="og:title"]').attr('content') || $('#productTitle').text().trim() || null;
+                if (!imageUrl) imageUrl = $('meta[property="og:image"]').attr('content') || $('#landingImage').attr('src') || null;
+
+                return { inStock: inStock ?? false, price, source: 'browser' as const, productName, imageUrl };
             } catch (e: any) {
                 console.error(`[AmazonStore] Browser fallback failed: ${e.message}`);
             } finally {
@@ -149,6 +166,6 @@ export const AmazonStore: StoreScraper = {
             }
         }
 
-        return { inStock: inStock ?? false, price, source: 'http' };
+        return { inStock: inStock ?? false, price, source: 'http' as const, productName, imageUrl };
     },
 };
