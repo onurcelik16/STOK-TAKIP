@@ -27,19 +27,25 @@ router.get('/dashboard', authMiddleware, (req: AuthRequest, res) => {
 
     const outOfStockCount = totalProducts - inStockCount;
 
-    // 3. Products with price drops in last 24h
+    // 3. Products with price drops in last 24h (compare current price vs highest price in last 24h)
     const priceDrops = db.prepare(`
-      SELECT p.id, p.url, p.store, p.name, p.image_url, curr.price as current_price, prev.price as previous_price,
-             ROUND(prev.price - curr.price, 2) as drop_amount
+      SELECT p.id, p.url, p.store, p.name, p.image_url,
+             latest.price as current_price,
+             max_hist.max_price as previous_price,
+             ROUND(max_hist.max_price - latest.price, 2) as drop_amount
       FROM products p
-      JOIN stock_history curr ON curr.product_id = p.id
-      JOIN stock_history prev ON prev.product_id = p.id
+      JOIN stock_history latest ON latest.product_id = p.id
+        AND latest.id = (SELECT s1.id FROM stock_history s1 WHERE s1.product_id = p.id ORDER BY s1.checked_at DESC LIMIT 1)
+      JOIN (
+        SELECT product_id, MAX(price) as max_price
+        FROM stock_history
+        WHERE price IS NOT NULL
+          AND checked_at > datetime('now', 'localtime', '-24 hours')
+        GROUP BY product_id
+      ) max_hist ON max_hist.product_id = p.id
       WHERE p.user_id = ?
-        AND curr.id = (SELECT s1.id FROM stock_history s1 WHERE s1.product_id = p.id ORDER BY s1.checked_at DESC LIMIT 1)
-        AND prev.id = (SELECT s2.id FROM stock_history s2 WHERE s2.product_id = p.id AND s2.id != curr.id ORDER BY s2.checked_at DESC LIMIT 1)
-        AND curr.price IS NOT NULL AND prev.price IS NOT NULL
-        AND curr.price < prev.price
-        AND curr.checked_at > datetime('now', 'localtime', '-24 hours')
+        AND latest.price IS NOT NULL
+        AND latest.price < max_hist.max_price
       ORDER BY drop_amount DESC
       LIMIT 5
     `).all(userId) as any[];

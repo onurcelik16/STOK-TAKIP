@@ -100,7 +100,49 @@ export const HepsiburadaStore: StoreScraper = {
             }
         }
 
-        // HTTP fallback (usually blocked but try anyway)
+        // HTTP fallback: Try HepsiBurada mobile API (less protected)
+        try {
+            // Extract product ID from URL
+            const urlMatch = url.match(/[-\s]p-(\w+)/i) || url.match(/\/([A-Za-z0-9]+)(?:\?|$)/);
+            const productId = urlMatch ? urlMatch[1] : null;
+
+            if (productId) {
+                const apiUrl = `https://www.hepsiburada.com/product/${productId}/get-product-detail`;
+                const apiResp = await axios.get(apiUrl, {
+                    headers: {
+                        'User-Agent': 'Mozilla/5.0 (Linux; Android 12; Pixel 6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Mobile Safari/537.36',
+                        'Accept': 'application/json, text/plain, */*',
+                        'Accept-Language': 'tr-TR,tr;q=0.9',
+                        'Referer': 'https://www.hepsiburada.com/',
+                    },
+                    timeout: 10000,
+                    validateStatus: () => true,
+                });
+
+                if (apiResp.status === 200 && apiResp.data) {
+                    const data = apiResp.data;
+                    const apiPrice = data.price || data.currentPrice || data.salePrice || null;
+                    const apiInStock = data.inStock !== false && data.stockStatus !== 'outOfStock';
+                    const apiName = data.name || data.productName || null;
+                    const apiImage = data.imageUrl || data.image || null;
+
+                    if (apiPrice) {
+                        console.log(`[HepsiburadaStore] Mobile API Result: inStock=${apiInStock}, price=${apiPrice}, name=${apiName}`);
+                        return {
+                            inStock: apiInStock,
+                            price: typeof apiPrice === 'string' ? parseFloat(apiPrice.replace(',', '.')) : apiPrice,
+                            source: 'http' as const,
+                            productName: apiName,
+                            imageUrl: apiImage,
+                        };
+                    }
+                }
+            }
+        } catch (e: any) {
+            console.warn(`[HepsiburadaStore] Mobile API failed: ${e.message}`);
+        }
+
+        // Standard HTTP fallback (usually blocked but try anyway)
         try {
             const resp = await axios.get(url, {
                 headers: {
