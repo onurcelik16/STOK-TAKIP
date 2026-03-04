@@ -16,9 +16,9 @@ type PreviewData = {
 
 function detectStore(url: string): DetectedStore {
   if (/trendyol\.com/i.test(url)) return { key: 'trendyol', label: 'Trendyol', color: '#F27A1A' };
-  if (/hepsiburada\.com/i.test(url)) return { key: 'hepsiburada', label: 'Hepsiburada', color: '#FF6000' };
+  if (/hepsiburada\.com/i.test(url)) return { key: 'generic', label: 'Diğer', color: '#6366F1' };
   if (/amazon\.com\.tr/i.test(url)) return { key: 'amazon', label: 'Amazon TR', color: '#FF9900' };
-  return null;
+  return { key: 'generic', label: 'Diğer', color: '#6366F1' };
 }
 
 export default function AddProductPage() {
@@ -183,7 +183,7 @@ export default function AddProductPage() {
               >
                 <option value="">Mağaza Seçin</option>
                 <option value="trendyol">🟠 Trendyol</option>
-                <option value="hepsiburada">🟡 Hepsiburada</option>
+                <option value="generic">🌐 Diğer Site</option>
                 <option value="amazon">🟢 Amazon TR</option>
               </select>
             </div>

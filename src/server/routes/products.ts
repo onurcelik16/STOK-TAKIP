@@ -185,8 +185,9 @@ router.get('/preview', authMiddleware, async (req: AuthRequest, res) => {
   const url = req.query.url as string;
   if (!url) return res.status(400).json({ error: 'url required' });
 
-  let store = 'trendyol';
-  if (url.includes('hepsiburada.com')) store = 'hepsiburada';
+  let store = 'generic';
+  if (url.includes('trendyol.com')) store = 'trendyol';
+  else if (url.includes('hepsiburada.com')) store = 'generic';
   else if (url.includes('amazon.com.tr') || url.includes('amazon.tr')) store = 'amazon';
 
   try {
@@ -194,12 +195,12 @@ router.get('/preview', authMiddleware, async (req: AuthRequest, res) => {
     if (store === 'trendyol') {
       const mod = await import('../stores/trendyol/TrendyolStore');
       scraper = mod.TrendyolStore;
-    } else if (store === 'hepsiburada') {
-      const mod = await import('../stores/hepsiburada/HepsiburadaStore');
-      scraper = mod.HepsiburadaStore;
     } else if (store === 'amazon') {
       const mod = await import('../stores/amazon/AmazonStore');
       scraper = mod.AmazonStore;
+    } else {
+      const mod = await import('../stores/generic/GenericStore');
+      scraper = mod.GenericStore;
     }
 
     if (!scraper) return res.json({ store, name: null, imageUrl: null, price: null });

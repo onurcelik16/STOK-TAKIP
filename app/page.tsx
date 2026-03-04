@@ -71,7 +71,7 @@ export default function LandingPage() {
                     </h1>
 
                     <p className="text-lg sm:text-xl text-slate-400 max-w-2xl mx-auto mb-10 leading-relaxed">
-                        Trendyol, Hepsiburada ve Amazon TR'deki ürünlerin fiyat ve stok durumlarını
+                        Trendyol, Amazon TR ve diğer e-ticaret sitelerindeki ürünlerin fiyat ve stok durumlarını
                         otomatik takip edin. Fiyat düştüğünde veya stok geldiğinde anında bildirim alın.
                     </p>
 
@@ -143,7 +143,7 @@ export default function LandingPage() {
                             {
                                 icon: Globe2,
                                 title: 'Multi-Mağaza',
-                                desc: 'Trendyol, Hepsiburada ve Amazon TR desteği. Tek panelden tüm mağazaları takip edin.',
+                                desc: 'Trendyol, Amazon TR ve diğer mağazalar. Tek panelden tüm mağazaları takip edin.',
                                 color: 'from-blue-500 to-cyan-500',
                                 bg: 'bg-blue-500/10',
                             },
@@ -193,7 +193,7 @@ export default function LandingPage() {
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
                         {[
                             { name: 'Trendyol', color: '#F27A1A', letter: 'T', desc: 'Türkiye\'nin en büyük e-ticaret sitesi' },
-                            { name: 'Hepsiburada', color: '#FF6000', letter: 'H', desc: 'Güvenilir alışveriş platformu' },
+                            { name: 'Diğer Siteler', color: '#6366F1', letter: 'D', desc: 'Herhangi bir e-ticaret sitesi' },
                             { name: 'Amazon TR', color: '#FF9900', letter: 'A', desc: 'Global e-ticaret devi' },
                         ].map((store, i) => (
                             <div

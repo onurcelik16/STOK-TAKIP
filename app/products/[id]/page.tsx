@@ -290,7 +290,7 @@ export default function ProductDetail() {
               <label className="block text-xs font-medium text-slate-500 mb-1">Mağaza</label>
               <select value={editStore} onChange={(e) => setEditStore(e.target.value)} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:border-indigo-500 outline-none">
                 <option value="trendyol">Trendyol</option>
-                <option value="hepsiburada">Hepsiburada</option>
+                <option value="generic">Diğer Site</option>
                 <option value="amazon">Amazon TR</option>
               </select>
             </div>

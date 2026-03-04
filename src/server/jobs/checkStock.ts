@@ -2,14 +2,14 @@ import cron from 'node-cron';
 import { db, getLastStatus } from '../data/db';
 import { DemoStore } from '../stores/examples/DemoStore';
 import { TrendyolStore } from '../stores/trendyol/TrendyolStore';
-import { HepsiburadaStore } from '../stores/hepsiburada/HepsiburadaStore';
+import { GenericStore } from '../stores/generic/GenericStore';
 import { AmazonStore } from '../stores/amazon/AmazonStore';
 import { notifyChange } from '../services/notifier';
 
 function getScraperByName(name: string) {
   const key = name.toLowerCase();
   if (key === 'trendyol') return TrendyolStore;
-  if (key === 'hepsiburada') return HepsiburadaStore;
+  if (key === 'hepsiburada' || key === 'generic' || key === 'other') return GenericStore;
   if (key === 'amazon') return AmazonStore;
   return DemoStore;
 }
