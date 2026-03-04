@@ -3,8 +3,8 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Area, AreaChart } from 'recharts';
-import { ArrowLeft, Clock, ExternalLink, Activity, DollarSign, PackageCheck, AlertCircle, Bell, BellRing, Trash2, Plus, Target, Loader2, Pencil, Save, X, Download } from 'lucide-react';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Area, AreaChart, ReferenceLine } from 'recharts';
+import { ArrowLeft, Clock, ExternalLink, Activity, DollarSign, PackageCheck, AlertCircle, Bell, BellRing, Trash2, Plus, Target, Loader2, Pencil, Save, X, Download, Calendar, TrendingDown, TrendingUp } from 'lucide-react';
 import { API_URL, getAuthHeaders, getProxyImageUrl } from '@/lib/api';
 
 type HistoryEntry = {
@@ -72,18 +72,21 @@ export default function ProductDetail() {
   const [editTags, setEditTags] = useState('');
   const [editSaving, setEditSaving] = useState(false);
 
+  // Chart time range
+  const [chartRange, setChartRange] = useState<'7' | '30' | '90' | 'all'>('30');
+
   useEffect(() => {
     fetchData();
     fetchAlerts();
     const interval = setInterval(fetchData, 30000);
     return () => clearInterval(interval);
-  }, [id]);
+  }, [id, chartRange]);
 
   async function fetchData() {
     const token = sessionStorage.getItem('token');
     if (!token) { router.push('/login'); return; }
     try {
-      const res = await fetch(`${API_URL}/products/${id}`, { headers: getAuthHeaders() });
+      const res = await fetch(`${API_URL}/products/${id}?days=${chartRange}`, { headers: getAuthHeaders() });
       if (!res.ok) {
         if (res.status === 401) { router.push('/login'); return; }
         throw new Error('Ürün bulunamadı');
@@ -194,12 +197,19 @@ export default function ProductDetail() {
 
   const chartData = history
     .filter(h => h.price !== null)
-    .map(h => ({
-      time: new Date(h.checked_at).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }),
-      date: new Date(h.checked_at).toLocaleDateString('tr-TR'),
-      price: h.price,
-      inStock: h.in_stock === 1
-    }))
+    .map(h => {
+      const d = new Date(h.checked_at);
+      return {
+        timestamp: d.getTime(),
+        label: chartRange === '7'
+          ? d.toLocaleDateString('tr-TR', { day: '2-digit', month: 'short' }) + ' ' + d.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })
+          : d.toLocaleDateString('tr-TR', { day: '2-digit', month: 'short' }),
+        fullDate: d.toLocaleDateString('tr-TR', { year: 'numeric', month: 'long', day: 'numeric' }),
+        fullTime: d.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }),
+        price: h.price,
+        inStock: h.in_stock === 1
+      };
+    })
     .reverse();
 
   const currentPrice = chartData.length > 0 ? chartData[chartData.length - 1].price : null;
@@ -497,8 +507,10 @@ export default function ProductDetail() {
         {/* Right Column: Chart & Table */}
         <div className="lg:col-span-2 space-y-6">
           <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-base font-semibold text-slate-900">Fiyat Geçmişi</h3>
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-3">
+                <h3 className="text-base font-semibold text-slate-900">📈 Fiyat Geçmişi</h3>
+              </div>
               <button
                 onClick={async () => {
                   try {
@@ -524,12 +536,65 @@ export default function ProductDetail() {
                 CSV İndir
               </button>
             </div>
+
+            {/* Time Range Filter */}
+            <div className="flex items-center gap-1.5 mb-5">
+              <Calendar className="w-4 h-4 text-slate-400" />
+              {[
+                { value: '7' as const, label: '7 Gün' },
+                { value: '30' as const, label: '30 Gün' },
+                { value: '90' as const, label: '90 Gün' },
+                { value: 'all' as const, label: 'Tümü' },
+              ].map((range) => (
+                <button
+                  key={range.value}
+                  onClick={() => setChartRange(range.value)}
+                  className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all ${chartRange === range.value
+                      ? 'bg-indigo-600 text-white shadow-md shadow-indigo-200'
+                      : 'bg-slate-100 text-slate-500 hover:bg-slate-200 hover:text-slate-700'
+                    }`}
+                >
+                  {range.label}
+                </button>
+              ))}
+              <span className="text-[10px] text-slate-400 ml-2">
+                {chartData.length} veri noktası
+              </span>
+            </div>
+
+            {/* Price Change Summary */}
+            {(() => {
+              const prices = chartData.map(d => d.price).filter((p): p is number => p != null && p > 0);
+              if (prices.length < 2) return null;
+              const first = prices[0];
+              const last = prices[prices.length - 1];
+              const change = last - first;
+              const changePercent = ((change / first) * 100).toFixed(1);
+              const isUp = change > 0;
+              const isDown = change < 0;
+              return (
+                <div className={`flex items-center gap-2 mb-4 px-3 py-2 rounded-lg text-sm font-medium ${isDown ? 'bg-emerald-50 text-emerald-700' : isUp ? 'bg-rose-50 text-rose-700' : 'bg-slate-50 text-slate-600'
+                  }`}>
+                  {isDown ? <TrendingDown className="w-4 h-4" /> : isUp ? <TrendingUp className="w-4 h-4" /> : null}
+                  <span>
+                    {isDown ? 'Fiyat düştü: ' : isUp ? 'Fiyat arttı: ' : 'Fiyat değişmedi'}
+                    {change !== 0 && (
+                      <>
+                        <strong>{Math.abs(change).toLocaleString('tr-TR', { maximumFractionDigits: 2 })} ₺</strong>
+                        {' '}({isDown ? '' : '+'}{changePercent}%)
+                      </>
+                    )}
+                  </span>
+                </div>
+              );
+            })()}
+
             {chartData.length < 2 ? (
               <div className="h-64 flex items-center justify-center text-slate-400 text-sm bg-slate-50 rounded-xl border border-dashed border-slate-200">
                 Grafik oluşturmak için en az 2 fiyat verisi bekleniyor.
               </div>
             ) : (
-              <div className="h-72 w-full">
+              <div className="h-80 w-full">
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                     <defs>
@@ -539,21 +604,38 @@ export default function ProductDetail() {
                       </linearGradient>
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                    <XAxis dataKey="time" stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} />
+                    <XAxis
+                      dataKey="label"
+                      stroke="#94a3b8"
+                      fontSize={11}
+                      tickLine={false}
+                      axisLine={false}
+                      interval={Math.max(0, Math.floor(chartData.length / 8))}
+                      angle={-30}
+                      textAnchor="end"
+                      height={50}
+                    />
                     <YAxis
                       stroke="#94a3b8"
                       fontSize={12}
                       tickLine={false}
                       axisLine={false}
-                      tickFormatter={(value) => `₺${value}`}
+                      tickFormatter={(value) => `₺${value.toLocaleString('tr-TR')}`}
                       domain={['dataMin - 50', 'dataMax + 50']}
                     />
                     <RechartsTooltip
-                      contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                      formatter={(value: number | undefined) => [`${value} TL`, 'Fiyat']}
-                      labelFormatter={(label, payload) => payload.length > 0 ? `${payload[0].payload.date} ${label}` : label}
+                      contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 12px rgb(0 0 0 / 0.15)', padding: '12px 16px' }}
+                      formatter={(value: number | undefined) => [
+                        `${(value as number).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₺`,
+                        'Fiyat'
+                      ]}
+                      labelFormatter={(_, payload) => {
+                        if (!payload || payload.length === 0) return '';
+                        const item = payload[0].payload;
+                        return `📅 ${item.fullDate} — ${item.fullTime}`;
+                      }}
                     />
-                    <Area type="monotone" dataKey="price" stroke="#6366f1" strokeWidth={3} fillOpacity={1} fill="url(#colorPrice)" activeDot={{ r: 6, strokeWidth: 0, fill: '#4f46e5' }} />
+                    <Area type="monotone" dataKey="price" stroke="#6366f1" strokeWidth={2.5} fillOpacity={1} fill="url(#colorPrice)" activeDot={{ r: 6, strokeWidth: 2, stroke: '#fff', fill: '#4f46e5' }} dot={chartData.length < 50 ? { r: 3, fill: '#6366f1', strokeWidth: 0 } : false} />
                   </AreaChart>
                 </ResponsiveContainer>
               </div>

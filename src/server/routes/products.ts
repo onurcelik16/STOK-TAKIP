@@ -69,9 +69,21 @@ router.get('/:id', authMiddleware, (req: AuthRequest, res) => {
       return res.status(403).json({ error: 'access_denied' });
     }
 
-    const history = db
-      .prepare('SELECT id, in_stock, price, checked_at, source, size FROM stock_history WHERE product_id = ? ORDER BY id DESC LIMIT 50')
-      .all(id) as any[];
+    // Support time range filtering via ?days=7|30|90|all
+    const daysParam = req.query.days as string;
+    let historyQuery = 'SELECT id, in_stock, price, checked_at, source, size FROM stock_history WHERE product_id = ?';
+    const queryParams: any[] = [id];
+
+    if (daysParam && daysParam !== 'all') {
+      const days = parseInt(daysParam, 10);
+      if (!isNaN(days) && days > 0) {
+        historyQuery += ` AND checked_at > datetime('now', 'localtime', '-${days} days')`;
+      }
+    }
+
+    historyQuery += ' ORDER BY id DESC LIMIT 2000';
+
+    const history = db.prepare(historyQuery).all(...queryParams) as any[];
 
     const current_status = history.length > 0 ? {
       value: history[0].in_stock === 1,
