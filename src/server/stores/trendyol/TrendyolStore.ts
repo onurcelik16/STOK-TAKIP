@@ -4,7 +4,7 @@ import { chromium } from 'playwright';
 import { StoreScraper } from '../Store';
 
 function extractPrice(text: string): number | null {
-  // Matches "8.560,00 TL" or "659,95 TL"
+  // Matches "8.560,00 TL" or "659,95 TL" or "5.404,82 TL"
   const priceMatch = text.match(/([0-9]{1,3}(?:\.[0-9]{3})*|[0-9]+)[.,][0-9]{2}\s*tl/i);
   if (priceMatch) {
     const cleanStr = priceMatch[0].replace(/\s*tl/i, '').trim();
@@ -27,7 +27,7 @@ function extractPrice(text: string): number | null {
 export const TrendyolStore: StoreScraper = {
   name: 'trendyol',
   async checkProduct({ url, size }) {
-    console.log(`[TrendyolStore] Checking ${url}`);
+    console.log(`[TrendyolStore] Checking ${url} (Size: ${size || 'N/A'})`);
     const resp = await axios.get(url, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36',
@@ -36,7 +36,6 @@ export const TrendyolStore: StoreScraper = {
         'Cache-Control': 'no-cache',
         'Pragma': 'no-cache',
       },
-      // Do not throw on error, let it pass so we can catch 403 vs 404
       validateStatus: () => true,
     });
 
@@ -56,7 +55,7 @@ export const TrendyolStore: StoreScraper = {
     let productName: string | null = null;
     let imageUrl: string | null = null;
 
-    // Extract Product ID from URL to match exact variant
+    // Extract Product ID from URL
     const urlMatch = url.match(/-p-([0-9]+)/);
     const targetSku = urlMatch ? urlMatch[1] : null;
 
@@ -65,7 +64,6 @@ export const TrendyolStore: StoreScraper = {
       try {
         const data = JSON.parse($(el).html() || '{}');
 
-        // Flatten ProductGroups and single items into an array to search
         let items: any[] = [];
         if (Array.isArray(data)) {
           items = data;
@@ -76,49 +74,96 @@ export const TrendyolStore: StoreScraper = {
         }
 
         for (const item of items) {
-          // Extract name and image from the top-level product
           if (!productName && item.name) productName = item.name;
           if (!imageUrl && item.image) {
             const img = Array.isArray(item.image) ? item.image[0] : item.image;
-            if (typeof img === 'string') {
-              imageUrl = img;
-            } else if (img && img.contentUrl) {
-              imageUrl = Array.isArray(img.contentUrl) ? img.contentUrl[0] : img.contentUrl;
-            }
+            if (typeof img === 'string') imageUrl = img;
+            else if (img && img.contentUrl) imageUrl = Array.isArray(img.contentUrl) ? img.contentUrl[0] : img.contentUrl;
           }
 
-          // If we have a target SKU, ONLY match that sku
-          const isTargetMatch = targetSku ? (item.sku === targetSku) : true;
+          // In Trendyol, if 'size' is provided, we want to match that specific variant
+          // Variants in JSON-LD often have their own SKU or name including size
+          const itemSku = item.sku || '';
+          const itemName = (item.name || '').toLowerCase();
+          const itemDesc = (item.description || '').toLowerCase();
+          
+          let sizeMatch = true;
+          if (size) {
+            const sizeLower = size.toLowerCase();
+            sizeMatch = itemName.includes(sizeLower) || 
+                        itemDesc.includes(sizeLower) || 
+                        (item.name && item.name.includes(size)) ||
+                        (item.sku === size); // Sometimes size is sku-like
+          }
 
-          if (isTargetMatch && item.offers && item.offers.availability) {
+          const skuMatch = targetSku ? (itemSku === targetSku) : true;
+
+          if (skuMatch && sizeMatch && item.offers && item.offers.availability) {
             if (inStock === null) inStock = item.offers.availability.includes('InStock');
             if (price === null) {
               if (item.offers.price) price = parseFloat(item.offers.price);
               else if (item.offers.lowPrice) price = parseFloat(item.offers.lowPrice);
               else if (item.offers.highPrice) price = parseFloat(item.offers.highPrice);
             }
-
-            if (targetSku) break;
+            if (targetSku && size) break;
           }
         }
-      } catch (e) {
-        // ignore parse errors
-      }
+      } catch (e) { }
     });
 
-    // Fallback: OG tags for name/image
+    // 2. Secondary Strategy: Extract from window.__PRODUCT_DETAIL_APP_CONF__
+    if (price === null || inStock === null) {
+      const configMatch = html.match(/window\.__PRODUCT_DETAIL_APP_CONF__\s*=\s*({.*?});/);
+      if (configMatch) {
+        try {
+          const config = JSON.parse(configMatch[1]);
+          const productData = config.product;
+          
+          if (productData) {
+            if (!productName) productName = productData.name;
+            
+            // Check variants for size match
+            if (size && productData.variants) {
+              const targetSize = size.toLowerCase();
+              const variant = productData.variants.find((v: any) => 
+                v.attributeValue?.toLowerCase() === targetSize || 
+                v.value?.toLowerCase() === targetSize
+              );
+              
+              if (variant) {
+                if (inStock === null) inStock = variant.inStock;
+                if (price === null && variant.price?.sellingPrice) {
+                  price = variant.price.sellingPrice;
+                }
+              }
+            }
+
+            // Fallback to default price if not found via variant
+            if (price === null && productData.price?.sellingPrice) {
+              price = productData.price.sellingPrice;
+            }
+            
+            if (inStock === null && productData.inStock !== undefined) {
+              inStock = productData.inStock;
+            }
+          }
+        } catch (e) { }
+      }
+    }
+
+    // Fallback: OG tags
     if (!productName) productName = $('meta[property="og:title"]').attr('content') || $('title').text().split('|')[0]?.trim() || null;
     if (!imageUrl) imageUrl = $('meta[property="og:image"]').attr('content') || null;
 
-    // 2. Secondary Strategy: Heuristics on DOM elements
+    // 3. Heuristics on DOM elements
     if (inStock === null) {
       const addToBasketBtn = $('.add-to-basket-button').length > 0 || $('.add-to-bs-tx').length > 0;
-      const isOut = $('.sold-out').length > 0;
+      const isOut = $('.sold-out').length > 0 || $('.tükendi').length > 0 || $('.stokta-yok').length > 0;
       inStock = addToBasketBtn && !isOut;
     }
 
     if (price === null) {
-      const priceText = $('.prc-dsc').text() || $('.prc-slg').text();
+      const priceText = $('.prc-dsc').text() || $('.prc-slg').text() || $('.product-price-container').text();
       if (priceText) {
         price = extractPrice(priceText);
       }
@@ -126,7 +171,7 @@ export const TrendyolStore: StoreScraper = {
 
     let source: 'http' | 'browser' = 'http';
 
-    // 3. Fallback: Browser rendering (Playwright) if we are still out of stock or couldn't parse
+    // 4. Fallback: Browser rendering
     const isBlocked = productName?.includes('Attention Required') || (inStock === null && !productName);
     const shouldRender = (isBlocked || !inStock) && process.env.RENDER_BROWSER === 'true';
     if (shouldRender) {
@@ -147,50 +192,36 @@ export const TrendyolStore: StoreScraper = {
 
         const $$ = cheerio.load(content);
 
-        let renderedInStock: boolean | null = null;
+        // Repeat the same logic in browser-rendered content
+        // (Similar logic could be refactored, but keeping it direct for now)
         $$('script[type="application/ld+json"]').each((i, el) => {
           try {
             const data = JSON.parse($$(el).html() || '{}');
-            if ((!productName || productName.includes('Attention Required')) && data.name) productName = data.name;
-            if (!imageUrl && data.image) {
-              const img = Array.isArray(data.image) ? data.image[0] : data.image;
-              if (typeof img === 'string') {
-                imageUrl = img;
-              } else if (img && img.contentUrl) {
-                imageUrl = Array.isArray(img.contentUrl) ? img.contentUrl[0] : img.contentUrl;
-              }
-            }
-            if (data.offers && data.offers.availability) {
-              if (renderedInStock === null) renderedInStock = data.offers.availability.includes('InStock');
-              if (price === null && data.offers.price) price = parseFloat(data.offers.price);
-            }
+            if (data.offers && data.offers.price && price === null) price = parseFloat(data.offers.price);
+            if (data.offers && data.offers.availability && inStock === null) inStock = data.offers.availability.includes('InStock');
           } catch (e) { }
         });
 
-        if (renderedInStock !== null) {
-          inStock = renderedInStock;
-        } else {
+        // Search config object in rendered content
+        const configMatchR = content.match(/window\.__PRODUCT_DETAIL_APP_CONF__\s*=\s*({.*?});/);
+        if (configMatchR && (price === null || inStock === null)) {
+            try {
+                const config = JSON.parse(configMatchR[1]);
+                if (price === null) price = config.product?.price?.sellingPrice || null;
+                if (inStock === null) inStock = config.product?.inStock ?? null;
+            } catch(e) {}
+        }
+
+        if (inStock === null) {
           const hasBuyR = $$('.add-to-basket-button').length > 0 || $$('.add-to-bs-tx').length > 0;
-          const isOutR = $$('.sold-out').length > 0;
+          const isOutR = $$('.sold-out').length > 0 || $$('.tükendi').length > 0;
           inStock = hasBuyR && !isOutR;
         }
 
         if (price === null) {
-          const priceTextR = $$('.prc-dsc').text() || $$('.prc-slg').text();
-          if (priceTextR) {
-            price = extractPrice(priceTextR);
-          } else {
-            price = extractPrice(content);
-          }
-        }
-
-        if (!productName || productName.includes('Attention Required')) {
-          const ogTitle = $$('meta[property="og:title"]').attr('content');
-          if (ogTitle && !ogTitle.includes('Attention Required')) productName = ogTitle;
-        }
-        if (!imageUrl) {
-          const ogImg = $$('meta[property="og:image"]').attr('content');
-          if (ogImg) imageUrl = ogImg;
+          const priceTextR = $$('.prc-dsc').text() || $$('.prc-slg').text() || $$('.product-price-container').text();
+          if (priceTextR) price = extractPrice(priceTextR);
+          else price = extractPrice(content);
         }
 
         source = 'browser';
