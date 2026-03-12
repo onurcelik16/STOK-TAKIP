@@ -12,7 +12,8 @@
     "build:web": "next build",
     "start": "node dist/index.js",
     "start:web": "next start -p 3001",
-    "check-db": "node scripts/check-db.mjs"
+    "check-db": "node scripts/check-db.mjs",
+    "postinstall": "npx playwright install chromium --with-deps"
   },
   "dependencies": {
     "@types/cors": "^2.8.19",

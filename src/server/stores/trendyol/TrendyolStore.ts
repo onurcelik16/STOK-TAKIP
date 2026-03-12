@@ -112,9 +112,9 @@ export const TrendyolStore: StoreScraper = {
 
     // 2. Secondary Strategy: Extract from window.__PRODUCT_DETAIL_APP_CONF__
     if (price === null || inStock === null) {
-      // Use a broader regex to catch it even if whitespace differs
-      const configMatch = html.match(/window\.__PRODUCT_DETAIL_APP_CONF__\s*=\s*({.*?});?\s*<\/script>/);
-      const simpleMatch = html.match(/window\.__PRODUCT_DETAIL_APP_CONF__\s*=\s*({.*?});/);
+      // Use a broader regex to catch it even if whitespace or newlines differ
+      const configMatch = html.match(/window\.__PRODUCT_DETAIL_APP_CONF__\s*=\s*({[\s\S]*?});?\s*<\/script>/);
+      const simpleMatch = html.match(/window\.__PRODUCT_DETAIL_APP_CONF__\s*=\s*({[\s\S]*?});/);
       const actualMatch = configMatch || simpleMatch;
       
       if (actualMatch) {
