@@ -4,24 +4,25 @@ import { chromium } from 'playwright';
 import { StoreScraper } from '../Store';
 
 function extractPrice(text: string): number | null {
-  // Matches "8.560,00 TL" or "659,95 TL" or "5.404,82 TL"
-  const priceMatch = text.match(/([0-9]{1,3}(?:\.[0-9]{3})*|[0-9]+)[.,][0-9]{2}\s*tl/i);
-  if (priceMatch) {
-    const cleanStr = priceMatch[0].replace(/\s*tl/i, '').trim();
-    const joined = cleanStr.replace(/\./g, '').replace(',', '.');
-    const parsed = parseFloat(joined);
-    return Number.isNaN(parsed) ? null : parsed;
-  }
+  // Find all price-like patterns (e.g., "5.000,00 TL" or "659 TL")
+  // We match integers with optional thousands separators and optional decimals
+  const regex = /([0-9]{1,3}(?:\.[0-9]{3})*|[0-9]+)(?:,[0-9]{2})?\s*tl/gi;
+  const matches = Array.from(text.matchAll(regex));
+  
+  if (matches.length === 0) return null;
 
-  // Try without decimals: "5600 tl"
-  const noDecimalsMatch = text.match(/([0-9]{1,3}(?:\.[0-9]{3})*|[0-9]+)\s*tl/i);
-  if (noDecimalsMatch) {
-    const joined = noDecimalsMatch[1].replace(/\./g, '');
-    const parsed = parseFloat(joined);
-    return Number.isNaN(parsed) ? null : parsed;
-  }
+  const parsedPrices = matches.map(match => {
+    const raw = match[0].toLowerCase().replace(/\s*tl/i, '').trim();
+    // Replace thousands separator (.) with nothing, and decimal separator (,) with (.)
+    const joined = raw.replace(/\./g, '').replace(',', '.');
+    return parseFloat(joined);
+  }).filter(p => !Number.isNaN(p));
 
-  return null;
+  if (parsedPrices.length === 0) return null;
+
+  // In Trendyol, if multiple prices exist (like installments vs main price), 
+  // the main price is almost always the largest one (e.g., 5000 TL vs 1666.67 TL installments).
+  return Math.max(...parsedPrices);
 }
 
 export const TrendyolStore: StoreScraper = {
@@ -81,8 +82,6 @@ export const TrendyolStore: StoreScraper = {
             else if (img && img.contentUrl) imageUrl = Array.isArray(img.contentUrl) ? img.contentUrl[0] : img.contentUrl;
           }
 
-          // In Trendyol, if 'size' is provided, we want to match that specific variant
-          // Variants in JSON-LD often have their own SKU or name including size
           const itemSku = item.sku || '';
           const itemName = (item.name || '').toLowerCase();
           const itemDesc = (item.description || '').toLowerCase();
@@ -93,7 +92,7 @@ export const TrendyolStore: StoreScraper = {
             sizeMatch = itemName.includes(sizeLower) || 
                         itemDesc.includes(sizeLower) || 
                         (item.name && item.name.includes(size)) ||
-                        (item.sku === size); // Sometimes size is sku-like
+                        (item.sku === size);
           }
 
           const skuMatch = targetSku ? (itemSku === targetSku) : true;
@@ -113,16 +112,19 @@ export const TrendyolStore: StoreScraper = {
 
     // 2. Secondary Strategy: Extract from window.__PRODUCT_DETAIL_APP_CONF__
     if (price === null || inStock === null) {
-      const configMatch = html.match(/window\.__PRODUCT_DETAIL_APP_CONF__\s*=\s*({.*?});/);
-      if (configMatch) {
+      // Use a broader regex to catch it even if whitespace differs
+      const configMatch = html.match(/window\.__PRODUCT_DETAIL_APP_CONF__\s*=\s*({.*?});?\s*<\/script>/);
+      const simpleMatch = html.match(/window\.__PRODUCT_DETAIL_APP_CONF__\s*=\s*({.*?});/);
+      const actualMatch = configMatch || simpleMatch;
+      
+      if (actualMatch) {
         try {
-          const config = JSON.parse(configMatch[1]);
+          const config = JSON.parse(actualMatch[1]);
           const productData = config.product;
           
           if (productData) {
             if (!productName) productName = productData.name;
             
-            // Check variants for size match
             if (size && productData.variants) {
               const targetSize = size.toLowerCase();
               const variant = productData.variants.find((v: any) => 
@@ -138,7 +140,6 @@ export const TrendyolStore: StoreScraper = {
               }
             }
 
-            // Fallback to default price if not found via variant
             if (price === null && productData.price?.sellingPrice) {
               price = productData.price.sellingPrice;
             }
@@ -163,9 +164,14 @@ export const TrendyolStore: StoreScraper = {
     }
 
     if (price === null) {
+      // Try specific classes first, then container, then whole small text blocks
       const priceText = $('.prc-dsc').text() || $('.prc-slg').text() || $('.product-price-container').text();
       if (priceText) {
         price = extractPrice(priceText);
+      } else {
+          // Final fallback to small snippets of text near the price area
+          const area = $('.product-detail-wrapper').text();
+          if (area) price = extractPrice(area);
       }
     }
 
@@ -192,8 +198,6 @@ export const TrendyolStore: StoreScraper = {
 
         const $$ = cheerio.load(content);
 
-        // Repeat the same logic in browser-rendered content
-        // (Similar logic could be refactored, but keeping it direct for now)
         $$('script[type="application/ld+json"]').each((i, el) => {
           try {
             const data = JSON.parse($$(el).html() || '{}');
@@ -202,7 +206,6 @@ export const TrendyolStore: StoreScraper = {
           } catch (e) { }
         });
 
-        // Search config object in rendered content
         const configMatchR = content.match(/window\.__PRODUCT_DETAIL_APP_CONF__\s*=\s*({.*?});/);
         if (configMatchR && (price === null || inStock === null)) {
             try {
