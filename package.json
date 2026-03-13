@@ -15,7 +15,7 @@
     "check-db": "node scripts/check-db.mjs",
     "load:test": "node scripts/load-test.mjs",
     "test:basic": "node tests/basic-api.test.mjs",
-    "postinstall": "npx playwright install chromium --with-deps"
+    "postinstall": "npx playwright install chromium"
   },
   "dependencies": {
     "@types/cors": "^2.8.19",
