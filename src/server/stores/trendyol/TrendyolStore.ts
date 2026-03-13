@@ -135,10 +135,20 @@ export const TrendyolStore: StoreScraper = {
       }
     }
 
-    // 4. Global regex on whole HTML
+    // 4. Global regex on whole HTML (tracking scripts vs. visible text)
     if (price === null) {
         const globalPriceMatch = html.match(/epn\.ecomm_totalvalue=([0-9]+)/);
-        if (globalPriceMatch) price = parseFloat(globalPriceMatch[1]);
+        if (globalPriceMatch) {
+            price = parseFloat(globalPriceMatch[1]);
+        }
+    }
+
+    // 4.1 Last-resort: try to extract any TL price from full HTML
+    if (price === null) {
+        const anyPrice = extractPrice(html);
+        if (anyPrice !== null) {
+            price = anyPrice;
+        }
     }
 
     // Metadata Fallbacks
