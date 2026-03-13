@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { db } from '../data/db';
+import { sendNotificationEmail } from '../utils/email';
 
 type Change = {
   productId: number;
@@ -39,6 +40,15 @@ function getUserTelegramId(productId: number): string | null {
   return row?.telegram_chat_id || null;
 }
 
+function getProductOwnerEmail(productId: number): string | null {
+  const row = db.prepare(`
+    SELECT u.email FROM users u
+    JOIN products p ON p.user_id = u.id
+    WHERE p.id = ?
+  `).get(productId) as { email: string } | undefined;
+  return row?.email || null;
+}
+
 export async function notifyChange(change: Change) {
   const statusEmoji = change.toInStock ? '🟢' : '🔴';
   const statusText = change.toInStock ? 'STOKTA' : 'TÜKENDİ';
@@ -52,9 +62,10 @@ export async function notifyChange(change: Change) {
 
   console.log(`[notify] Stock change: Product #${change.productId} -> ${statusText}`);
 
+  const product = db.prepare('SELECT user_id, name FROM products WHERE id = ?').get(change.productId) as { user_id: number; name: string | null } | undefined;
+
   // Create in-app notification for product owner
   try {
-    const product = db.prepare('SELECT user_id, name FROM products WHERE id = ?').get(change.productId) as { user_id: number; name: string | null } | undefined;
     if (product) {
       const title = change.toInStock ? 'Ürün Stokta!' : 'Ürün Tükendi';
       const message = `${change.store.toUpperCase()} - ${product.name || change.url.split('/').pop()?.substring(0, 40)}${change.price ? ` (${change.price.toFixed(2)} ₺)` : ''}`;
@@ -70,6 +81,21 @@ export async function notifyChange(change: Change) {
   const chatId = getUserTelegramId(change.productId);
   if (chatId) {
     await sendTelegramMessage(chatId, text);
+  }
+
+  // Send email notification (uses Brevo when BREVO_API_KEY is set – works for any recipient)
+  const ownerEmail = getProductOwnerEmail(change.productId);
+  if (ownerEmail) {
+    const emailTitle = change.toInStock ? 'Ürün Stokta!' : 'Ürün Tükendi';
+    const emailMessage = `${change.store.toUpperCase()} – ${product?.name || change.url.split('/').pop()?.substring(0, 40) || 'Ürün'}${change.price != null ? ` • ${change.price.toFixed(2)} ₺` : ''}`;
+    await sendNotificationEmail({
+      to: ownerEmail,
+      subject: `${emailTitle} – Stock Tracker`,
+      title: emailTitle,
+      message: emailMessage,
+      productUrl: change.url,
+      productName: product?.name || undefined,
+    });
   }
 }
 
@@ -111,5 +137,19 @@ export async function notifyPriceAlert(alert: {
   const chatId = getUserTelegramId(alert.productId);
   if (chatId) {
     await sendTelegramMessage(chatId, text);
+  }
+
+  // Email notification for price alert
+  const product = db.prepare('SELECT user_id, name FROM products WHERE id = ?').get(alert.productId) as { user_id: number; name: string | null } | undefined;
+  const ownerEmail = product ? (db.prepare('SELECT email FROM users WHERE id = ?').get(product.user_id) as { email: string } | undefined)?.email : null;
+  if (ownerEmail) {
+    await sendNotificationEmail({
+      to: ownerEmail,
+      subject: 'Fiyat alarmı tetiklendi – Stock Tracker',
+      title: 'Fiyat Alarmı Tetiklendi!',
+      message: `${alert.store.toUpperCase()} – Hedef ${alert.targetPrice.toFixed(2)} ₺, güncel fiyat ${alert.currentPrice.toFixed(2)} ₺.`,
+      productUrl: alert.url,
+      productName: product?.name || undefined,
+    });
   }
 }

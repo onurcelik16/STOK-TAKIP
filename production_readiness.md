@@ -18,8 +18,12 @@ Gerekli değişkenler:
 | `CORS_ORIGIN` | İzin verilen Frontend URL (Backend için) | `https://site.com` |
 | `NEXT_PUBLIC_API_URL` | Erişilebilir API URL (Frontend için) | `https://api.site.com` |
 | `CRON` | Arka plan tarama sıklığı | `*/10 * * * *` |
-| `RESEND_API_KEY` | Resend API anahtarı | `re_123...` |
-| `EMAIL_FROM` | Onaylı gönderici maili | `onboarding@resend.dev` |
+| `BREVO_API_KEY` | **Önerilen.** Brevo API anahtarı (ücretsiz planda günde 300 mail, **herkese** gönderim) | `xkeysib-...` |
+| `EMAIL_FROM` | Gönderici e-posta (Brevo/Resend’te onaylı adres) | `bildirim@site.com` |
+| `EMAIL_FROM_NAME` | Gönderici adı (opsiyonel) | `Stock Tracker` |
+| `RESEND_API_KEY` | Alternatif: Resend API (ücretsiz planda sadece kendi adresinize gönderim) | `re_123...` |
+
+**E-posta:** Birden fazla kullanıcıya (kayıt doğrulama, stok/fiyat bildirimi) mail atmak için **Brevo** kullanın: [brevo.com](https://www.brevo.com) → hesap → SMTP & API → API Key. `BREVO_API_KEY` tanımlıysa mailler Brevo ile gider (herhangi bir alıcıya). Tanımlı değilse Resend kullanılır (Resend ücretsiz planda sadece kendi e-postanıza gönderir).
 
 ## 2. Derleme (Build) Adımı
 Proje hem backend hem frontend içerdiği için derlenmesi gerekir:
