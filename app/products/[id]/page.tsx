@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Area, AreaChart, ReferenceLine } from 'recharts';
@@ -195,22 +195,24 @@ export default function ProductDetail() {
 
   const { product, history, current_status } = data;
 
-  const chartData = history
-    .filter(h => h.price !== null)
-    .map(h => {
-      const d = new Date(h.checked_at);
-      return {
-        timestamp: d.getTime(),
-        label: chartRange === '7'
-          ? d.toLocaleDateString('tr-TR', { day: '2-digit', month: 'short' }) + ' ' + d.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })
-          : d.toLocaleDateString('tr-TR', { day: '2-digit', month: 'short' }),
-        fullDate: d.toLocaleDateString('tr-TR', { year: 'numeric', month: 'long', day: 'numeric' }),
-        fullTime: d.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }),
-        price: h.price,
-        inStock: h.in_stock === 1
-      };
-    })
-    .reverse();
+  const chartData = useMemo(() => {
+    return history
+      .filter(h => h.price !== null)
+      .map(h => {
+        const d = new Date(h.checked_at);
+        return {
+          timestamp: d.getTime(),
+          label: chartRange === '7'
+            ? d.toLocaleDateString('tr-TR', { day: '2-digit', month: 'short' }) + ' ' + d.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })
+            : d.toLocaleDateString('tr-TR', { day: '2-digit', month: 'short' }),
+          fullDate: d.toLocaleDateString('tr-TR', { year: 'numeric', month: 'long', day: 'numeric' }),
+          fullTime: d.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }),
+          price: h.price,
+          inStock: h.in_stock === 1
+        };
+      })
+      .reverse();
+  }, [history, chartRange]);
 
   const currentPrice = chartData.length > 0 ? chartData[chartData.length - 1].price : null;
 
@@ -644,7 +646,12 @@ export default function ProductDetail() {
 
           <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
             <div className="px-6 py-5 border-b border-slate-100">
-              <h3 className="text-base font-semibold text-slate-900">Kontrol Geçmişi (Son 50)</h3>
+              <div className="flex items-center justify-between">
+                <h3 className="text-base font-semibold text-slate-900">Kontrol Geçmişi (Son 50)</h3>
+                <p className="text-xs text-slate-400">
+                  Toplam {history.length} kayıt, tabloda ilk 50 gösteriliyor.
+                </p>
+              </div>
             </div>
             {history.length === 0 ? (
               <div className="p-8 text-center text-slate-500 text-sm">Hiç log bulunmuyor.</div>
@@ -660,7 +667,7 @@ export default function ProductDetail() {
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-slate-50">
-                    {history.map((h) => (
+                    {history.slice(0, 50).map((h) => (
                       <tr key={h.id} className="hover:bg-slate-50/50 transition-colors">
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 flex items-center gap-2">
                           <Clock className="w-3.5 h-3.5 text-slate-400" />

@@ -44,7 +44,7 @@ router.get('/', authMiddleware, (req: AuthRequest, res) => {
         FROM products p
         LEFT JOIN users u ON p.user_id = u.id
         LEFT JOIN stock_history sh ON sh.id = (
-          SELECT s2.id FROM stock_history s2 WHERE s2.product_id = p.id ORDER BY s2.id DESC LIMIT 1
+          SELECT s2.id FROM stock_history s2 WHERE s2.product_id = p.id ORDER BY s2.checked_at DESC LIMIT 1
         )
         ${showAll ? '' : 'WHERE p.user_id = ?'}
         ORDER BY p.id DESC`
@@ -81,7 +81,7 @@ router.get('/:id', authMiddleware, (req: AuthRequest, res) => {
       }
     }
 
-    historyQuery += ' ORDER BY id DESC LIMIT 2000';
+    historyQuery += ' ORDER BY checked_at DESC LIMIT 2000';
 
     const history = db.prepare(historyQuery).all(...queryParams) as any[];
 

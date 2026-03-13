@@ -156,8 +156,21 @@ export function ensureDatabaseInitialized() {
 export function getLastStatus(productId: number): { in_stock: number; price: number | null } | null {
   const row = db
     .prepare(
-      'SELECT in_stock, price FROM stock_history WHERE product_id = ? ORDER BY id DESC LIMIT 1'
+      'SELECT in_stock, price FROM stock_history WHERE product_id = ? ORDER BY checked_at DESC LIMIT 1'
     )
     .get(productId) as { in_stock: number; price: number | null } | undefined;
   return row ?? null;
+}
+
+export function pruneOldStockHistory(retentionDays: number = 90): number {
+  if (!Number.isFinite(retentionDays) || retentionDays <= 0) {
+    return 0;
+  }
+
+  const stmt = db.prepare(
+    `DELETE FROM stock_history 
+     WHERE checked_at < datetime('now', 'localtime', ?)`
+  );
+  const info = stmt.run(`-${Math.floor(retentionDays)} days`);
+  return info.changes ?? 0;
 }

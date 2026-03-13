@@ -21,7 +21,7 @@ router.get('/dashboard', authMiddleware, (req: AuthRequest, res) => {
       WHERE p.user_id = ? AND EXISTS (
         SELECT 1 FROM stock_history sh
         WHERE sh.product_id = p.id AND sh.in_stock = 1
-        AND sh.id = (SELECT s2.id FROM stock_history s2 WHERE s2.product_id = p.id ORDER BY s2.id DESC LIMIT 1)
+        AND sh.id = (SELECT s2.id FROM stock_history s2 WHERE s2.product_id = p.id ORDER BY s2.checked_at DESC LIMIT 1)
       )
     `).get(userId) as any).count;
 
@@ -68,8 +68,8 @@ router.get('/dashboard', authMiddleware, (req: AuthRequest, res) => {
       WHERE p.user_id = ? AND sh.checked_at > datetime('now', 'localtime', '-24 hours')
     `).get(userId) as any).count;
 
-    // 6. Cron interval
-    const cronExpr = process.env.CRON || '*/10 * * * *';
+    // 6. Cron interval (DB setting overrides env)
+    const cronExpr = getSetting('cron_interval') || process.env.CRON || '*/10 * * * *';
 
     res.json({
       totalProducts,
@@ -126,18 +126,32 @@ router.get('/my-products', authMiddleware, (req: AuthRequest, res) => {
   }
 });
 
-// Veritabanı dosya bilgisi
+// Veritabanı dosya ve runtime bilgisi
 router.get('/db-info', authMiddleware, (req: AuthRequest, res) => {
   try {
     const info = db.prepare('PRAGMA database_list').get() as any;
     const pageSize = db.prepare('PRAGMA page_size').get() as { page_size: number };
     const pageCount = db.prepare('PRAGMA page_count').get() as { page_count: number };
+    const envDbPath = process.env.DB_PATH || path.join(process.cwd(), 'data', 'app.sqlite');
+
+    let fileSize = 0;
+    let dbExists = false;
+    try {
+      const stat = fs.statSync(envDbPath);
+      fileSize = stat.size;
+      dbExists = stat.isFile();
+    } catch {
+      // ignore
+    }
 
     res.json({
       database: info?.name || 'app.sqlite',
       pageSize: pageSize?.page_size || 0,
       pageCount: pageCount?.page_count || 0,
       sizeKB: Math.round((pageSize?.page_size || 0) * (pageCount?.page_count || 0) / 1024),
+      dbPath: envDbPath,
+      dbFileExists: dbExists,
+      dbFileSizeKB: Math.round(fileSize / 1024),
     });
   } catch (e: any) {
     res.status(500).json({ error: e.message });
@@ -418,7 +432,7 @@ function setSetting(key: string, value: string): void {
 // Get all system settings + system info
 router.get('/system-settings', authMiddleware, adminMiddleware, (req: AuthRequest, res) => {
   try {
-    const dbPath = path.join(process.cwd(), 'data', 'app.sqlite');
+    const dbPath = process.env.DB_PATH || path.join(process.cwd(), 'data', 'app.sqlite');
     let dbSize = 0;
     try { dbSize = fs.statSync(dbPath).size; } catch { }
 
@@ -441,6 +455,7 @@ router.get('/system-settings', authMiddleware, adminMiddleware, (req: AuthReques
       totalChecks,
       totalAlerts,
       activeAlerts,
+      dbPath,
       uptimeSeconds: Math.floor(process.uptime()),
       nodeVersion: process.version,
       platform: process.platform,

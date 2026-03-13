@@ -18,6 +18,25 @@ export function createServer() {
     next();
   });
 
+  // 1.1. Measure response times for all requests
+  app.use((req, res, next) => {
+    const start = process.hrtime.bigint();
+    res.on('finish', () => {
+      const end = process.hrtime.bigint();
+      const durationMs = Number(end - start) / 1_000_000;
+      logger.info(
+        {
+          method: req.method,
+          url: req.originalUrl || req.url,
+          statusCode: res.statusCode,
+          durationMs: Number(durationMs.toFixed(2)),
+        },
+        '[req] Completed request',
+      );
+    });
+    next();
+  });
+
   // 2. Permissive CORS for cross-domain debugging
   app.use(cors({
     origin: true,

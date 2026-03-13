@@ -1,0 +1,53 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Type check
+        run: npx tsc -p tsconfig.server.json --noEmit
+
+      - name: Lint (if configured)
+        run: |
+          if npm run lint -- --version >/dev/null 2>&1; then
+            npm run lint
+          else
+            echo "No lint script configured, skipping."
+          fi
+
+      - name: Build server
+        run: npm run build:server
+
+      - name: Run basic API tests
+        env:
+          TEST_API_URL: http://localhost:3000
+          JWT_SECRET: testsecret
+          DB_PATH: ./data/ci-test.sqlite
+        run: |
+          mkdir -p data
+          node dist/index.js &
+          SERVER_PID=$!
+          # wait for server to be ready
+          npx wait-on http://localhost:3000/health --timeout 30000
+          npm run test:basic
+          kill $SERVER_PID
+
