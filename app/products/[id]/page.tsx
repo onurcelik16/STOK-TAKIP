@@ -60,6 +60,7 @@ export default function ProductDetail() {
   const [targetPrice, setTargetPrice] = useState('');
   const [alertDirection, setAlertDirection] = useState<'below' | 'above'>('below');
   const [alertSaving, setAlertSaving] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
   // Edit State
   const [editing, setEditing] = useState(false);
@@ -76,6 +77,7 @@ export default function ProductDetail() {
   const [chartRange, setChartRange] = useState<'7' | '30' | '90' | 'all'>('30');
 
   useEffect(() => {
+    setMounted(true);
     fetchData();
     fetchAlerts();
     const interval = setInterval(fetchData, 30000);
@@ -263,7 +265,7 @@ export default function ProductDetail() {
                 </>
               )}
               <span className="text-slate-300">•</span>
-              <span className="text-xs flex items-center gap-1"><Clock className="w-3 h-3" /> {new Date(product.created_at).toLocaleDateString('tr-TR')}</span>
+              <span className="text-xs flex items-center gap-1"><Clock className="w-3 h-3" /> {mounted ? new Date(product.created_at).toLocaleDateString('tr-TR') : '...'}</span>
             </div>
           </div>
         </div>
@@ -381,7 +383,7 @@ export default function ProductDetail() {
           <div className="bg-gradient-to-br from-indigo-500 to-violet-600 rounded-2xl p-6 shadow-md text-white">
             {product.image_url && (
               <div className="w-full aspect-square rounded-xl overflow-hidden mb-4 border-2 border-white/20">
-                <img src={product.image_url} alt={product.name || ''} className="w-full h-full object-cover" />
+                <img src={getProxyImageUrl(product.image_url)} alt={product.name || ''} className="w-full h-full object-cover" />
               </div>
             )}
             <div className="flex items-center gap-3 mb-4 opacity-80">
@@ -627,10 +629,13 @@ export default function ProductDetail() {
                     />
                     <RechartsTooltip
                       contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 12px rgb(0 0 0 / 0.15)', padding: '12px 16px' }}
-                      formatter={(value: number | undefined) => [
-                        `${(value as number).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₺`,
-                        'Fiyat'
-                      ]}
+                      formatter={(value: any) => {
+                        if (value === undefined || value === null) return ['---', 'Fiyat'];
+                        return [
+                          `${Number(value).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₺`,
+                          'Fiyat'
+                        ];
+                      }}
                       labelFormatter={(_, payload) => {
                         if (!payload || payload.length === 0) return '';
                         const item = payload[0].payload;
@@ -671,7 +676,7 @@ export default function ProductDetail() {
                       <tr key={h.id} className="hover:bg-slate-50/50 transition-colors">
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 flex items-center gap-2">
                           <Clock className="w-3.5 h-3.5 text-slate-400" />
-                          {new Date(h.checked_at).toLocaleString('tr-TR', { dateStyle: 'short', timeStyle: 'short' })}
+                          {mounted ? new Date(h.checked_at).toLocaleString('tr-TR', { dateStyle: 'short', timeStyle: 'short' }) : '...'}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           {h.in_stock === 1 ? (
