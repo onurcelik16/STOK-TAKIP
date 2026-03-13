@@ -135,9 +135,20 @@ export function ensureDatabaseInitialized() {
       db.exec("ALTER TABLE users ADD COLUMN is_verified INTEGER NOT NULL DEFAULT 0;");
       logger.info('[db] migrated: added is_verified to users');
     }
+    if (!userColNames.includes('email_notifications')) {
+      db.exec("ALTER TABLE users ADD COLUMN email_notifications INTEGER NOT NULL DEFAULT 1;");
+      logger.info('[db] migrated: added email_notifications to users');
+    }
 
-    // 3. Ensure users are verified (Verification disabled by user request)
-    db.exec("UPDATE users SET is_verified = 1");
+    // 3. One-time: mark all existing users as verified so they are not locked out (new users may get is_verified=0 if REQUIRE_EMAIL_VERIFICATION=true)
+    const legacyVerified = db.prepare("SELECT value FROM system_settings WHERE key = ?").get('legacy_users_verified') as { value: string } | undefined;
+    if (!legacyVerified) {
+      db.exec("UPDATE users SET is_verified = 1");
+      db.prepare("INSERT OR REPLACE INTO system_settings (key, value) VALUES (?, ?)").run('legacy_users_verified', '1');
+      logger.info('[db] migrated: legacy users set to verified');
+    }
+
+    // 4. Ensure at least one admin exists
     const admin = db.prepare("SELECT id FROM users WHERE role = 'admin' LIMIT 1").get();
     if (!admin) {
       const firstUser = db.prepare("SELECT id FROM users ORDER BY id ASC LIMIT 1").get() as any;

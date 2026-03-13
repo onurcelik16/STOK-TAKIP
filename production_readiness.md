@@ -25,6 +25,9 @@ Gerekli değişkenler:
 
 **E-posta:** Birden fazla kullanıcıya (kayıt doğrulama, stok/fiyat bildirimi) mail atmak için **Brevo** kullanın: [brevo.com](https://www.brevo.com) → hesap → SMTP & API → API Key. `BREVO_API_KEY` tanımlıysa mailler Brevo ile gider (herhangi bir alıcıya). Tanımlı değilse Resend kullanılır (Resend ücretsiz planda sadece kendi e-postanıza gönderir).
 
+| `FRONTEND_URL` | Panel URL (hoş geldin mailindeki “Panele Git” linki) | `https://stok-takip-six.vercel.app` |
+| `REQUIRE_EMAIL_VERIFICATION` | `true` ise yeni üyeler e-posta doğrulama yapar; doğrulayana kadar panele tam erişemez | (boş = doğrulama yok, hoş geldin maili hemen gider) |
+
 ## 2. Derleme (Build) Adımı
 Proje hem backend hem frontend içerdiği için derlenmesi gerekir:
 ```bash

@@ -68,17 +68,27 @@ export default function Login() {
       const data = await res.json();
 
       if (isRegister) {
-        setIsRegister(false);
-        setSuccess('Hesabınız oluşturuldu! Lütfen şimdi giriş yapın.');
+        sessionStorage.setItem('token', data.token);
+        sessionStorage.setItem('user', JSON.stringify(data.user));
         setPassword('');
         setPasswordConfirm('');
         setName('');
+        if (data.user?.is_verified === false) {
+          router.push('/verify');
+          return;
+        }
+        setSuccess('Hesabınız oluşturuldu! Yönlendiriliyorsunuz...');
+        router.push('/dashboard');
         return;
       }
 
       sessionStorage.setItem('token', data.token);
       sessionStorage.setItem('user', JSON.stringify(data.user));
 
+      if (data.user?.is_verified === false) {
+        router.push('/verify');
+        return;
+      }
       router.push('/dashboard');
     } catch (e: any) {
       setError(e.message || (isRegister ? 'Kayıt başarısız' : 'Giriş başarısız'));

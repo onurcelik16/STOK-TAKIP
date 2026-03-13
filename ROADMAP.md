@@ -4,6 +4,23 @@ Bu dokümanda: (1) E-posta sistemi (üye olurken + bildirim), (2) Madde 1–2–
 
 ---
 
+## Yapılanlar (Özet)
+
+- **Gözlemlenebilirlik:** API’de her istek için response süresi + status log; cron’da döngü ve ürün bazlı süre + hata logları; `npm run load:test` ile basit load test.
+- **Veritabanı:** `stock_history` sorguları `checked_at` + mevcut indeksle hizalandı; `pruneOldStockHistory(retentionDays)` + cron sonunda otomatik pruning; `STOCK_HISTORY_RETENTION_DAYS` env.
+- **Cron/Scraper:** Scraper timeout (`SCRAPER_TIMEOUT_MS`, `withTimeout`); overlap koruması (isChecking) zaten vardı.
+- **Railway/Vercel:** `check-db.mjs` ve admin `db-info` / `system-settings` ile `DB_PATH` ve volume kontrolü; production_readiness güncel.
+- **Frontend:** Ürün detayda `chartData` useMemo; kontrol geçmişi tablosunda ilk 50 kayıt + bilgi metni.
+- **Test/CI:** `tests/basic-api.test.mjs` (health, register, login, product CRUD); `.github/workflows/ci.yml` (tsc, build, test).
+- **Trendyol:** Stok dışı ürünlerde fiyat için HTML üzerinde son çare regex fallback; fiyat artık görünüyor.
+- **E-posta – Bildirim:** Brevo desteği (`BREVO_API_KEY` varsa herkese mail; yoksa Resend); `sendEmail` + `sendNotificationEmail`; stok değişimi ve fiyat alarmında ürün sahibine e-posta (Telegram + panel bildirimi aynen). Dokümantasyon: `production_readiness.md`, `docs/BREVO-DOMAIN-SETUP.md` (domain yoksa Gmail ile gönderici).
+
+**E-posta (tamamlandı):** Hoş geldin maili (kayıt veya doğrulama sonrası); doğrulama akışı `REQUIRE_EMAIL_VERIFICATION=true` ile açılabiliyor; `email_notifications` kolonu + ayarlar sayfasından aç/kapa; notifier mail atmadan önce tercihi kontrol ediyor.
+
+**Henüz yapılmadı (ROADMAP’ta kalanlar):** Madde 1 (fiyat analizi, toplu import, paylaşım); Madde 2 (monitoring/ops alert, cache); Madde 4 (filtreleme, mobil); Madde 5 (plan/limit, istatistikler, geri bildirim).
+
+---
+
 ## Öncelik 0: E-posta Sistemi (Üyelik + Bildirim)
 
 **Mevcut durum:** Resend entegre; `sendVerificationEmail` var ama kayıtta herkes otomatik doğrulanıyor, mail gönderilmiyor. Stok/fiyat bildirimleri sadece Telegram + panel bildirimi.

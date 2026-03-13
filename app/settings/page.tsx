@@ -15,6 +15,7 @@ export default function SettingsPage() {
     const [telegramVerifyCode, setTelegramVerifyCode] = useState<string | null>(null);
     const [telegramLink, setTelegramLink] = useState<string | null>(null);
     const [generatingLink, setGeneratingLink] = useState(false);
+    const [emailNotifications, setEmailNotifications] = useState(true);
     const [success, setSuccess] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
@@ -33,6 +34,7 @@ export default function SettingsPage() {
             setEmail(data.email || '');
             setTelegramChatId(data.telegram_chat_id || '');
             setTelegramVerifyCode(data.telegram_verify_code || null);
+            setEmailNotifications(data.email_notifications !== 0);
         } catch (e) {
             console.error(e);
         } finally {
@@ -64,7 +66,7 @@ export default function SettingsPage() {
             const res = await fetch(`${API_URL}/auth/profile`, {
                 method: 'PUT',
                 headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name, telegram_chat_id: telegramChatId }),
+                body: JSON.stringify({ name, telegram_chat_id: telegramChatId, email_notifications: emailNotifications }),
             });
             if (!res.ok) throw new Error('Failed to update');
             const user = await res.json();
@@ -201,17 +203,15 @@ export default function SettingsPage() {
                 </div>
                 <div className="p-6 space-y-4">
                     <label className="flex items-center gap-3 cursor-pointer">
-                        <input type="checkbox" defaultChecked className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" />
+                        <input
+                            type="checkbox"
+                            checked={emailNotifications}
+                            onChange={(e) => setEmailNotifications(e.target.checked)}
+                            className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                        />
                         <div>
-                            <span className="text-sm font-medium text-slate-900">Stok Değişimleri</span>
-                            <p className="text-xs text-slate-400">Ürün stoka girdiğinde veya tükendiğinde bildirim al</p>
-                        </div>
-                    </label>
-                    <label className="flex items-center gap-3 cursor-pointer">
-                        <input type="checkbox" defaultChecked className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" />
-                        <div>
-                            <span className="text-sm font-medium text-slate-900">Fiyat Alarmları</span>
-                            <p className="text-xs text-slate-400">Hedef fiyatınıza ulaşıldığında bildirim al</p>
+                            <span className="text-sm font-medium text-slate-900">E-posta ile bildirim al</span>
+                            <p className="text-xs text-slate-400">Stok değişimi ve fiyat alarmlarında e-posta gönderilsin</p>
                         </div>
                     </label>
                 </div>

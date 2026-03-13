@@ -4,7 +4,7 @@ import bcrypt from 'bcryptjs';
 import crypto from 'node:crypto';
 import { db } from '../data/db';
 import { generateToken, authMiddleware, AuthRequest } from '../middleware/auth';
-import { sendVerificationEmail } from '../utils/email';
+import { sendVerificationEmail, sendWelcomeEmail } from '../utils/email';
 import { authLimiter } from '../middleware/rateLimit';
 import { logger } from '../utils/logger';
 
@@ -40,7 +40,8 @@ router.post('/register', authLimiter, async (req, res) => {
     // Assign role: first user = admin, rest = user
     const userCount = (db.prepare('SELECT COUNT(*) as count FROM users').get() as any)?.count || 0;
     const role = userCount === 0 ? 'admin' : 'user';
-    const isVerified = 1; // Auto-verify everyone for now
+    const requireVerification = process.env.REQUIRE_EMAIL_VERIFICATION === 'true';
+    const isVerified = requireVerification ? 0 : 1;
 
     // Create user
     const stmt = db.prepare(
@@ -48,6 +49,14 @@ router.post('/register', authLimiter, async (req, res) => {
     );
     const info = stmt.run(email, passwordHash, name, role, verificationCode, isVerified);
     const userId = Number(info.lastInsertRowid);
+
+    if (requireVerification) {
+      await sendVerificationEmail(email, verificationCode);
+      logger.info({ userId, email }, '[auth] Verification email sent');
+    } else {
+      await sendWelcomeEmail(email, name);
+      logger.info({ userId, email }, '[auth] Welcome email sent');
+    }
 
     const token = generateToken(userId);
 
@@ -58,6 +67,7 @@ router.post('/register', authLimiter, async (req, res) => {
         email,
         name,
         role,
+        is_verified: isVerified === 1,
       },
     });
   } catch (e: any) {
@@ -81,8 +91,8 @@ router.post('/login', authLimiter, async (req, res) => {
   logger.info({ email }, '[auth] Login attempt');
 
   try {
-    const user = db.prepare('SELECT id, email, password_hash, name, role FROM users WHERE email = ?').get(email) as
-      | { id: number; email: string; password_hash: string; name: string | null; role: string }
+    const user = db.prepare('SELECT id, email, password_hash, name, role, is_verified FROM users WHERE email = ?').get(email) as
+      | { id: number; email: string; password_hash: string; name: string | null; role: string; is_verified: number }
       | undefined;
 
     if (!user) {
@@ -108,7 +118,7 @@ router.post('/login', authLimiter, async (req, res) => {
         email: user.email,
         name: user.name,
         role: user.role,
-        is_verified: true
+        is_verified: user.is_verified === 1,
       },
     });
   } catch (e: any) {
@@ -141,6 +151,9 @@ router.post('/verify', authMiddleware, async (req: AuthRequest, res) => {
 
     db.prepare('UPDATE users SET is_verified = 1, verification_code = NULL WHERE id = ?').run(req.userId!);
 
+    const u = db.prepare('SELECT email, name FROM users WHERE id = ?').get(req.userId!) as { email: string; name: string | null };
+    if (u) await sendWelcomeEmail(u.email, u.name || '');
+
     res.json({ success: true, message: 'Hesabınız başarıyla doğrulandı' });
   } catch (e: any) {
     res.status(500).json({ error: e.message });
@@ -170,7 +183,7 @@ router.post('/resend-code', authMiddleware, async (req: AuthRequest, res) => {
 // Get current user profile
 router.get('/me', authMiddleware, (req: AuthRequest, res) => {
   try {
-    const user = db.prepare('SELECT id, email, name, role, telegram_chat_id, telegram_verify_code, created_at FROM users WHERE id = ?').get(req.userId!) as any;
+    const user = db.prepare('SELECT id, email, name, role, telegram_chat_id, telegram_verify_code, email_notifications, created_at FROM users WHERE id = ?').get(req.userId!) as any;
     if (!user) return res.status(404).json({ error: 'User not found' });
     res.json(user);
   } catch (e: any) {
@@ -193,16 +206,19 @@ router.get('/telegram/connect', authMiddleware, (req: AuthRequest, res) => {
   }
 });
 
-// Update user profile (name, telegram_chat_id)
+// Update user profile (name, telegram_chat_id, email_notifications)
 router.put('/profile', authMiddleware, async (req: AuthRequest, res) => {
-  const { name, telegram_chat_id } = req.body;
+  const { name, telegram_chat_id, email_notifications } = req.body;
   try {
-    db.prepare('UPDATE users SET name = ?, telegram_chat_id = ? WHERE id = ?').run(
-      name || null,
-      telegram_chat_id || null,
-      req.userId!
-    );
-    const user = db.prepare('SELECT id, email, name, telegram_chat_id FROM users WHERE id = ?').get(req.userId!) as any;
+    const updates: string[] = [];
+    const params: any[] = [];
+    if (name !== undefined) { updates.push('name = ?'); params.push(name || null); }
+    if (telegram_chat_id !== undefined) { updates.push('telegram_chat_id = ?'); params.push(telegram_chat_id || null); }
+    if (email_notifications !== undefined) { updates.push('email_notifications = ?'); params.push(email_notifications ? 1 : 0); }
+    if (updates.length === 0) return res.status(400).json({ error: 'no_changes' });
+    params.push(req.userId!);
+    db.prepare(`UPDATE users SET ${updates.join(', ')} WHERE id = ?`).run(...params);
+    const user = db.prepare('SELECT id, email, name, telegram_chat_id, email_notifications FROM users WHERE id = ?').get(req.userId!) as any;
     res.json(user);
   } catch (e: any) {
     res.status(500).json({ error: e.message });

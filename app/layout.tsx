@@ -16,7 +16,7 @@ export default function RootLayout({
   const isPublicPage = pathname === '/' || pathname === '/login' || pathname === '/register' || pathname === '/landing';
   const isVerifyPage = pathname === '/verify';
 
-  // Verification & Auth Guard (Disabled by user request)
+  // Auth guard + unverified users -> /verify
   useEffect(() => {
     if (isPublicPage) return;
 
@@ -24,6 +24,16 @@ export default function RootLayout({
     const userStr = sessionStorage.getItem('user');
 
     if (!token || !userStr) {
+      router.push('/login');
+      return;
+    }
+
+    try {
+      const user = JSON.parse(userStr);
+      if (user.is_verified === false && pathname !== '/verify') {
+        router.push('/verify');
+      }
+    } catch {
       router.push('/login');
     }
   }, [pathname, isPublicPage]);

@@ -68,6 +68,31 @@ export async function sendEmail(options: {
   }
 }
 
+/** Panel URL for links in emails (e.g. https://stok-takip-six.vercel.app) */
+function getPanelUrl(): string {
+  return process.env.FRONTEND_URL || process.env.CORS_ORIGIN || '';
+}
+
+export async function sendWelcomeEmail(email: string, name: string) {
+  const panelUrl = getPanelUrl();
+  const linkHtml = panelUrl
+    ? `<p style="margin-top: 20px;"><a href="${panelUrl}" style="display: inline-block; background: #4f46e5; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 600;">Panele Git</a></p>`
+    : '<p style="margin-top: 16px; color: #6b7280;">Kayıt olduğunuz panel adresinden giriş yapabilirsiniz.</p>';
+
+  return sendEmail({
+    to: email,
+    subject: 'Stock Tracker\'a Hoş Geldiniz!',
+    html: `
+      <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 8px;">
+        <h2 style="color: #4f46e5; margin-bottom: 20px;">Hoş Geldiniz${name ? ` ${name}` : ''}!</h2>
+        <p style="color: #4b5563; font-size: 16px; line-height: 1.5;">Stock Tracker hesabınız hazır. Ürün ekleyip stok ve fiyat takibine hemen başlayabilirsiniz.</p>
+        ${linkHtml}
+        <p style="color: #9ca3af; font-size: 14px; margin-top: 24px;">Bu e-postayı siz talep etmediyseniz dikkate almayın.</p>
+      </div>
+    `,
+  });
+}
+
 export async function sendVerificationEmail(email: string, code: string) {
   return sendEmail({
     to: email,

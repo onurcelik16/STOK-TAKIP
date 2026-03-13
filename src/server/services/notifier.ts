@@ -42,11 +42,12 @@ function getUserTelegramId(productId: number): string | null {
 
 function getProductOwnerEmail(productId: number): string | null {
   const row = db.prepare(`
-    SELECT u.email FROM users u
+    SELECT u.email, COALESCE(u.email_notifications, 1) as email_notifications FROM users u
     JOIN products p ON p.user_id = u.id
     WHERE p.id = ?
-  `).get(productId) as { email: string } | undefined;
-  return row?.email || null;
+  `).get(productId) as { email: string; email_notifications: number } | undefined;
+  if (!row?.email || row.email_notifications === 0) return null;
+  return row.email;
 }
 
 export async function notifyChange(change: Change) {
