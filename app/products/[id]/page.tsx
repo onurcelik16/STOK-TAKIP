@@ -174,11 +174,11 @@ export default function ProductDetail() {
     finally { setEditSaving(false); }
   }
 
-  if (loading) {
+  if (loading || !mounted) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[50vh] text-slate-400">
         <Loader2 className="w-8 h-8 animate-spin mb-4 text-indigo-500" />
-        <p>Ürün verileri yükleniyor...</p>
+        <p>{!mounted ? 'Uygulama hazırlanıyor...' : 'Ürün verileri yükleniyor...'}</p>
       </div>
     );
   }
@@ -217,6 +217,15 @@ export default function ProductDetail() {
   }, [history, chartRange]);
 
   const currentPrice = chartData.length > 0 ? chartData[chartData.length - 1].price : null;
+
+  const currentPriceLocale = useMemo(() => {
+    if (!mounted || currentPrice == null) return '---';
+    try {
+      return Number(currentPrice).toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' });
+    } catch {
+      return '---';
+    }
+  }, [currentPrice, mounted]);
 
   async function handleDelete() {
     if (!confirm('Bu ürünü silmek istediğinize emin misiniz? Tüm geçmiş verileri de silinecek.')) return;
@@ -391,7 +400,7 @@ export default function ProductDetail() {
               <span className="text-sm font-medium uppercase tracking-wider">Güncel Fiyat</span>
             </div>
             <div className="text-4xl font-bold tracking-tight mb-4">
-              {currentPrice != null ? (currentPrice as number).toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' }) : '---'}
+              {currentPriceLocale}
             </div>
             {/* Price Stats */}
             {(() => {
