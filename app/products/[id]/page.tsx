@@ -63,6 +63,17 @@ export default function ProductDetail() {
   const [chartRange, setChartRange] = useState<'7' | '30' | '90' | 'all'>('30');
   const [mounted, setMounted] = useState(false);
 
+  // Edit State
+  const [editing, setEditing] = useState(false);
+  const [editName, setEditName] = useState('');
+  const [editUrl, setEditUrl] = useState('');
+  const [editStore, setEditStore] = useState('');
+  const [editSelector, setEditSelector] = useState('');
+  const [editSize, setEditSize] = useState('');
+  const [editCategory, setEditCategory] = useState('');
+  const [editTags, setEditTags] = useState('');
+  const [editSaving, setEditSaving] = useState(false);
+
   const chartData = useMemo(() => {
     if (!data) return [];
     return data.history
