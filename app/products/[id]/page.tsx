@@ -60,21 +60,39 @@ export default function ProductDetail() {
   const [targetPrice, setTargetPrice] = useState('');
   const [alertDirection, setAlertDirection] = useState<'below' | 'above'>('below');
   const [alertSaving, setAlertSaving] = useState(false);
+  const [chartRange, setChartRange] = useState<'7' | '30' | '90' | 'all'>('30');
   const [mounted, setMounted] = useState(false);
 
-  // Edit State
-  const [editing, setEditing] = useState(false);
-  const [editName, setEditName] = useState('');
-  const [editUrl, setEditUrl] = useState('');
-  const [editStore, setEditStore] = useState('');
-  const [editSelector, setEditSelector] = useState('');
-  const [editSize, setEditSize] = useState('');
-  const [editCategory, setEditCategory] = useState('');
-  const [editTags, setEditTags] = useState('');
-  const [editSaving, setEditSaving] = useState(false);
+  const chartData = useMemo(() => {
+    if (!data) return [];
+    return data.history
+      .filter(h => h.price !== null)
+      .map(h => {
+        const d = new Date(h.checked_at);
+        return {
+          timestamp: d.getTime(),
+          label: chartRange === '7'
+            ? d.toLocaleDateString('tr-TR', { day: '2-digit', month: 'short' }) + ' ' + d.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })
+            : d.toLocaleDateString('tr-TR', { day: '2-digit', month: 'short' }),
+          fullDate: d.toLocaleDateString('tr-TR', { year: 'numeric', month: 'long', day: 'numeric' }),
+          fullTime: d.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }),
+          price: h.price,
+          inStock: h.in_stock === 1
+        };
+      })
+      .reverse();
+  }, [data, chartRange]);
 
-  // Chart time range
-  const [chartRange, setChartRange] = useState<'7' | '30' | '90' | 'all'>('30');
+  const currentPrice = chartData.length > 0 ? chartData[chartData.length - 1].price : null;
+
+  const currentPriceLocale = useMemo(() => {
+    if (!mounted || currentPrice == null) return '---';
+    try {
+      return Number(currentPrice).toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' });
+    } catch {
+      return '---';
+    }
+  }, [currentPrice, mounted]);
 
   useEffect(() => {
     setMounted(true);
@@ -195,38 +213,6 @@ export default function ProductDetail() {
     );
   }
 
-  const { product, history, current_status } = data;
-
-  const chartData = useMemo(() => {
-    return history
-      .filter(h => h.price !== null)
-      .map(h => {
-        const d = new Date(h.checked_at);
-        return {
-          timestamp: d.getTime(),
-          label: chartRange === '7'
-            ? d.toLocaleDateString('tr-TR', { day: '2-digit', month: 'short' }) + ' ' + d.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })
-            : d.toLocaleDateString('tr-TR', { day: '2-digit', month: 'short' }),
-          fullDate: d.toLocaleDateString('tr-TR', { year: 'numeric', month: 'long', day: 'numeric' }),
-          fullTime: d.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }),
-          price: h.price,
-          inStock: h.in_stock === 1
-        };
-      })
-      .reverse();
-  }, [history, chartRange]);
-
-  const currentPrice = chartData.length > 0 ? chartData[chartData.length - 1].price : null;
-
-  const currentPriceLocale = useMemo(() => {
-    if (!mounted || currentPrice == null) return '---';
-    try {
-      return Number(currentPrice).toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' });
-    } catch {
-      return '---';
-    }
-  }, [currentPrice, mounted]);
-
   async function handleDelete() {
     if (!confirm('Bu ürünü silmek istediğinize emin misiniz? Tüm geçmiş verileri de silinecek.')) return;
     try {
@@ -243,6 +229,7 @@ export default function ProductDetail() {
       alert('Ürün silinemedi!');
     }
   }
+  const { product, history, current_status } = data;
 
   return (
     <div className="space-y-6">
