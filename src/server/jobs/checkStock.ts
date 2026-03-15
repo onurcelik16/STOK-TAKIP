@@ -81,6 +81,9 @@ export function scheduleStockChecks() {
           const source = result.source ?? 'http';
           const size = result.size ?? p.size ?? null;
 
+          // IMPORTANT: Read previous status BEFORE inserting the new record
+          const last = getLastStatus(p.id);
+
           db.prepare(
             "INSERT INTO stock_history (product_id, in_stock, price, checked_at, source, size) VALUES (?, ?, ?, datetime('now', 'localtime'), ?, ?)"
           ).run(
@@ -122,7 +125,6 @@ export function scheduleStockChecks() {
             }
           }
 
-          const last = getLastStatus(p.id);
           const prev = last ? last.in_stock === 1 : null;
           const now = inStock === 1;
 
