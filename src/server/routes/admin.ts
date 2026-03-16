@@ -163,36 +163,36 @@ router.get('/analytics', authMiddleware, (req: AuthRequest, res) => {
   try {
     const userId = req.userId!;
 
-    // Top price increases (comparing last 2 checks)
+    // Top price increases (comparing current price vs price from 7 days ago)
     const priceIncreases = db.prepare(`
-      SELECT p.id, p.url, p.store, curr.price as current_price, prev.price as previous_price,
-             ROUND(curr.price - prev.price, 2) as change_amount,
-             ROUND((curr.price - prev.price) / prev.price * 100, 1) as change_percent
+      SELECT p.id, p.url, p.store, p.name, curr.price as current_price, old.price as previous_price,
+             ROUND(curr.price - old.price, 2) as change_amount,
+             ROUND((curr.price - old.price) / old.price * 100, 1) as change_percent
       FROM products p
       JOIN stock_history curr ON curr.product_id = p.id
-      JOIN stock_history prev ON prev.product_id = p.id
+        AND curr.id = (SELECT s1.id FROM stock_history s1 WHERE s1.product_id = p.id AND s1.price IS NOT NULL ORDER BY s1.checked_at DESC LIMIT 1)
+      JOIN stock_history old ON old.product_id = p.id
+        AND old.id = (SELECT s2.id FROM stock_history s2 WHERE s2.product_id = p.id AND s2.price IS NOT NULL AND s2.checked_at <= datetime('now', 'localtime', '-6 hours') ORDER BY s2.checked_at ASC LIMIT 1)
       WHERE p.user_id = ?
-        AND curr.id = (SELECT s1.id FROM stock_history s1 WHERE s1.product_id = p.id ORDER BY s1.checked_at DESC LIMIT 1)
-        AND prev.id = (SELECT s2.id FROM stock_history s2 WHERE s2.product_id = p.id AND s2.id != curr.id ORDER BY s2.checked_at DESC LIMIT 1)
-        AND curr.price IS NOT NULL AND prev.price IS NOT NULL AND prev.price > 0
-        AND curr.price > prev.price
+        AND curr.price IS NOT NULL AND old.price IS NOT NULL AND old.price > 0
+        AND curr.price > old.price
       ORDER BY change_percent DESC
       LIMIT 5
     `).all(userId);
 
-    // Top price decreases
+    // Top price decreases (comparing current price vs price from 7 days ago)
     const priceDecreases = db.prepare(`
-      SELECT p.id, p.url, p.store, curr.price as current_price, prev.price as previous_price,
-             ROUND(prev.price - curr.price, 2) as change_amount,
-             ROUND((prev.price - curr.price) / prev.price * 100, 1) as change_percent
+      SELECT p.id, p.url, p.store, p.name, curr.price as current_price, old.price as previous_price,
+             ROUND(old.price - curr.price, 2) as change_amount,
+             ROUND((old.price - curr.price) / old.price * 100, 1) as change_percent
       FROM products p
       JOIN stock_history curr ON curr.product_id = p.id
-      JOIN stock_history prev ON prev.product_id = p.id
+        AND curr.id = (SELECT s1.id FROM stock_history s1 WHERE s1.product_id = p.id AND s1.price IS NOT NULL ORDER BY s1.checked_at DESC LIMIT 1)
+      JOIN stock_history old ON old.product_id = p.id
+        AND old.id = (SELECT s2.id FROM stock_history s2 WHERE s2.product_id = p.id AND s2.price IS NOT NULL AND s2.checked_at <= datetime('now', 'localtime', '-6 hours') ORDER BY s2.checked_at ASC LIMIT 1)
       WHERE p.user_id = ?
-        AND curr.id = (SELECT s1.id FROM stock_history s1 WHERE s1.product_id = p.id ORDER BY s1.checked_at DESC LIMIT 1)
-        AND prev.id = (SELECT s2.id FROM stock_history s2 WHERE s2.product_id = p.id AND s2.id != curr.id ORDER BY s2.checked_at DESC LIMIT 1)
-        AND curr.price IS NOT NULL AND prev.price IS NOT NULL AND prev.price > 0
-        AND curr.price < prev.price
+        AND curr.price IS NOT NULL AND old.price IS NOT NULL AND old.price > 0
+        AND curr.price < old.price
       ORDER BY change_percent DESC
       LIMIT 5
     `).all(userId);

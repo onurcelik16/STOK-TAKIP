@@ -25,7 +25,6 @@ export default function AddProductPage() {
   const router = useRouter();
   const [url, setUrl] = useState('');
   const [store, setStore] = useState('');
-  const [selector, setSelector] = useState('');
   const [size, setSize] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -78,12 +77,7 @@ export default function AddProductPage() {
   const [category, setCategory] = useState('');
   const [tags, setTags] = useState('');
 
-  // Auto-detect store from URL
-  useEffect(() => {
-    const d = detectStore(url);
-    setDetected(d);
-    if (d) setStore(d.key);
-  }, [url]);
+
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -98,7 +92,7 @@ export default function AddProductPage() {
         body: JSON.stringify({
           url: url.trim(),
           store,
-          selector: selector || undefined,
+          selector: undefined,
           size: size || undefined,
           name: editName || preview?.name || undefined,
           image_url: preview?.imageUrl || undefined,
@@ -236,27 +230,15 @@ export default function AddProductPage() {
             </div>
 
             {/* Optional fields */}
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-medium text-slate-500 mb-1">CSS Seçici (opsiyonel)</label>
-                <input
-                  type="text"
-                  value={selector}
-                  onChange={(e) => setSelector(e.target.value)}
-                  className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:border-indigo-500 outline-none transition-all shadow-sm"
-                  placeholder=".price-box"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-slate-500 mb-1">Beden (opsiyonel)</label>
-                <input
-                  type="text"
-                  value={size}
-                  onChange={(e) => setSize(e.target.value)}
-                  className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:border-indigo-500 outline-none transition-all shadow-sm"
-                  placeholder="M, L, XL..."
-                />
-              </div>
+            <div>
+              <label className="block text-xs font-medium text-slate-500 mb-1">Beden (opsiyonel)</label>
+              <input
+                type="text"
+                value={size}
+                onChange={(e) => setSize(e.target.value)}
+                className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:border-indigo-500 outline-none transition-all shadow-sm"
+                placeholder="M, L, XL..."
+              />
             </div>
 
             {error && (

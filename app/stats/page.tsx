@@ -8,8 +8,8 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { API_URL, getAuthHeaders } from '@/lib/api';
 
 type AnalyticsData = {
-    priceIncreases: Array<{ id: number; url: string; store: string; current_price: number; previous_price: number; change_amount: number; change_percent: number }>;
-    priceDecreases: Array<{ id: number; url: string; store: string; current_price: number; previous_price: number; change_amount: number; change_percent: number }>;
+    priceIncreases: Array<{ id: number; name: string | null; url: string; store: string; current_price: number; previous_price: number; change_amount: number; change_percent: number }>;
+    priceDecreases: Array<{ id: number; name: string | null; url: string; store: string; current_price: number; previous_price: number; change_amount: number; change_percent: number }>;
     totalChecks: number;
     checks24h: number;
     dailyChecks: Array<{ day: string; count: number }>;
@@ -118,7 +118,7 @@ export default function StatsPage() {
                                 <div key={item.id} className="px-6 py-4 flex items-center justify-between hover:bg-slate-50/50 transition-colors">
                                     <div className="flex-1 min-w-0 mr-4">
                                         <Link href={`/products/${item.id}`} className="text-sm font-medium text-slate-900 hover:text-indigo-600 truncate block">
-                                            {item.url.replace(/https?:\/\/(www\.)?/, '').substring(0, 45)}...
+                                            {item.name || item.url.replace(/https?:\/\/(www\.)?/, '').substring(0, 45)}...
                                         </Link>
                                         <span className="text-xs text-slate-400 capitalize">{item.store}</span>
                                     </div>
@@ -146,7 +146,7 @@ export default function StatsPage() {
                                 <div key={item.id} className="px-6 py-4 flex items-center justify-between hover:bg-slate-50/50 transition-colors">
                                     <div className="flex-1 min-w-0 mr-4">
                                         <Link href={`/products/${item.id}`} className="text-sm font-medium text-slate-900 hover:text-indigo-600 truncate block">
-                                            {item.url.replace(/https?:\/\/(www\.)?/, '').substring(0, 45)}...
+                                            {item.name || item.url.replace(/https?:\/\/(www\.)?/, '').substring(0, 45)}...
                                         </Link>
                                         <span className="text-xs text-slate-400 capitalize">{item.store}</span>
                                     </div>
