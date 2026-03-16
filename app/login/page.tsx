@@ -244,6 +244,18 @@ export default function Login() {
               </label>
             )}
 
+            {/* Forgot Password Link (login mode only) */}
+            {!isRegister && (
+              <div className="flex justify-end -mt-1">
+                <Link
+                  href="/forgot-password"
+                  className="text-xs font-medium text-indigo-400 hover:text-indigo-300 transition-colors"
+                >
+                  Şifremi Unuttum
+                </Link>
+              </div>
+            )}
+
             {success && (
               <div className="bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 px-4 py-3 rounded-xl text-sm font-medium flex items-center gap-2">
                 <CheckCircle2 className="w-4 h-4 shrink-0" />

@@ -4,7 +4,7 @@ import bcrypt from 'bcryptjs';
 import crypto from 'node:crypto';
 import { db } from '../data/db';
 import { generateToken, authMiddleware, AuthRequest } from '../middleware/auth';
-import { sendVerificationEmail, sendWelcomeEmail } from '../utils/email';
+import { sendVerificationEmail, sendWelcomeEmail, sendPasswordResetEmail } from '../utils/email';
 import { authLimiter } from '../middleware/rateLimit';
 import { logger } from '../utils/logger';
 
@@ -222,6 +222,93 @@ router.put('/profile', authMiddleware, async (req: AuthRequest, res) => {
     res.json(user);
   } catch (e: any) {
     res.status(500).json({ error: e.message });
+  }
+});
+
+// Forgot password – request reset link
+router.post('/forgot-password', authLimiter, async (req, res) => {
+  const schema = z.object({
+    email: z.string().email(),
+  });
+
+  const parsed = schema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ error: 'Geçerli bir e-posta adresi girin' });
+  }
+
+  const { email } = parsed.data;
+
+  try {
+    const user = db.prepare('SELECT id, email FROM users WHERE email = ?').get(email) as { id: number; email: string } | undefined;
+
+    if (user) {
+      // Generate a secure token
+      const rawToken = crypto.randomBytes(32).toString('hex');
+      const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
+      const expires = new Date(Date.now() + 60 * 60 * 1000).toISOString(); // 1 hour
+
+      db.prepare('UPDATE users SET password_reset_token = ?, password_reset_expires = ? WHERE id = ?')
+        .run(tokenHash, expires, user.id);
+
+      const panelUrl = process.env.FRONTEND_URL || process.env.CORS_ORIGIN || '';
+      const resetUrl = `${panelUrl}/reset-password?token=${rawToken}`;
+
+      await sendPasswordResetEmail(user.email, resetUrl);
+      logger.info({ userId: user.id }, '[auth] Password reset email sent');
+    } else {
+      logger.info({ email }, '[auth] Forgot password: email not found (silent)');
+    }
+
+    // Always return success to avoid email enumeration
+    res.json({ success: true, message: 'Eğer bu e-posta adresiyle bir hesap varsa, şifre sıfırlama bağlantısı gönderildi.' });
+  } catch (e: any) {
+    logger.error(e, '[auth] forgot-password failed');
+    res.status(500).json({ error: 'İşlem sırasında bir hata oluştu' });
+  }
+});
+
+// Reset password – use token to set new password
+router.post('/reset-password', authLimiter, async (req, res) => {
+  const schema = z.object({
+    token: z.string().min(1),
+    newPassword: z.string().min(8),
+  });
+
+  const parsed = schema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ error: 'Geçersiz istek. Şifre en az 8 karakter olmalıdır.' });
+  }
+
+  const { token, newPassword } = parsed.data;
+
+  try {
+    const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+
+    const user = db.prepare(
+      'SELECT id, password_reset_expires FROM users WHERE password_reset_token = ?'
+    ).get(tokenHash) as { id: number; password_reset_expires: string } | undefined;
+
+    if (!user) {
+      return res.status(400).json({ error: 'Geçersiz veya süresi dolmuş bağlantı. Lütfen tekrar şifre sıfırlama talebinde bulunun.' });
+    }
+
+    // Check expiry
+    if (new Date(user.password_reset_expires) < new Date()) {
+      // Clear expired token
+      db.prepare('UPDATE users SET password_reset_token = NULL, password_reset_expires = NULL WHERE id = ?').run(user.id);
+      return res.status(400).json({ error: 'Bağlantının süresi dolmuş. Lütfen tekrar şifre sıfırlama talebinde bulunun.' });
+    }
+
+    // Hash new password and clear token
+    const passwordHash = await bcrypt.hash(newPassword, 10);
+    db.prepare('UPDATE users SET password_hash = ?, password_reset_token = NULL, password_reset_expires = NULL WHERE id = ?')
+      .run(passwordHash, user.id);
+
+    logger.info({ userId: user.id }, '[auth] Password reset successful');
+    res.json({ success: true, message: 'Şifreniz başarıyla güncellendi. Yeni şifrenizle giriş yapabilirsiniz.' });
+  } catch (e: any) {
+    logger.error(e, '[auth] reset-password failed');
+    res.status(500).json({ error: 'İşlem sırasında bir hata oluştu' });
   }
 });
 

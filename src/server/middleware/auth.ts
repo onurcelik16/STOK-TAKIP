@@ -35,8 +35,6 @@ export function authMiddleware(req: AuthRequest, res: Response, next: NextFuncti
 
     // Verification check removed by user request
     req.userRole = user.role || 'user';
-
-    req.userRole = user.role || 'user';
   } catch (e) {
     req.userRole = 'user';
   }

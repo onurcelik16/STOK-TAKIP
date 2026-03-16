@@ -139,6 +139,14 @@ export function ensureDatabaseInitialized() {
       db.exec("ALTER TABLE users ADD COLUMN email_notifications INTEGER NOT NULL DEFAULT 1;");
       logger.info('[db] migrated: added email_notifications to users');
     }
+    if (!userColNames.includes('password_reset_token')) {
+      db.exec("ALTER TABLE users ADD COLUMN password_reset_token TEXT;");
+      logger.info('[db] migrated: added password_reset_token to users');
+    }
+    if (!userColNames.includes('password_reset_expires')) {
+      db.exec("ALTER TABLE users ADD COLUMN password_reset_expires TEXT;");
+      logger.info('[db] migrated: added password_reset_expires to users');
+    }
 
     // 3. One-time: mark all existing users as verified so they are not locked out (new users may get is_verified=0 if REQUIRE_EMAIL_VERIFICATION=true)
     const legacyVerified = db.prepare("SELECT value FROM system_settings WHERE key = ?").get('legacy_users_verified') as { value: string } | undefined;
