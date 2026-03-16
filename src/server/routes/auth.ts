@@ -250,9 +250,10 @@ router.post('/forgot-password', authLimiter, async (req, res) => {
       db.prepare('UPDATE users SET password_reset_token = ?, password_reset_expires = ? WHERE id = ?')
         .run(tokenHash, expires, user.id);
 
-      const panelUrl = process.env.FRONTEND_URL || process.env.CORS_ORIGIN || '';
+      const panelUrl = (process.env.FRONTEND_URL || process.env.CORS_ORIGIN || '').trim().replace(/\/+$/, '');
       const resetUrl = `${panelUrl}/reset-password?token=${rawToken}`;
 
+      logger.info({ panelUrl, resetUrl: resetUrl.substring(0, 80), FRONTEND_URL: process.env.FRONTEND_URL, CORS_ORIGIN: process.env.CORS_ORIGIN }, '[auth] Building reset URL');
       await sendPasswordResetEmail(user.email, resetUrl);
       logger.info({ userId: user.id }, '[auth] Password reset email sent');
     } else {
