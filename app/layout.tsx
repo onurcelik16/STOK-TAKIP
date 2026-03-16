@@ -13,7 +13,7 @@ export default function RootLayout({
 }>) {
   const pathname = usePathname();
   const router = useRouter();
-  const isPublicPage = pathname === '/' || pathname === '/login' || pathname === '/register' || pathname === '/landing';
+  const isPublicPage = pathname === '/' || pathname === '/login' || pathname === '/register' || pathname === '/landing' || pathname === '/forgot-password' || pathname === '/reset-password';
   const isVerifyPage = pathname === '/verify';
 
   // Auth guard + unverified users -> /verify
