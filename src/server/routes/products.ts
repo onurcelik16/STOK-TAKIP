@@ -40,7 +40,11 @@ router.get('/', authMiddleware, (req: AuthRequest, res) => {
           sh.in_stock AS last_in_stock,
           sh.price AS last_price,
           sh.checked_at AS last_checked_at,
-          sh.source AS last_source
+          sh.source AS last_source,
+          (SELECT s3.price FROM stock_history s3 
+           WHERE s3.product_id = p.id AND s3.price IS NOT NULL 
+           AND s3.checked_at <= datetime('now', 'localtime', '-6 hours') 
+           ORDER BY s3.checked_at DESC LIMIT 1) as previous_price
         FROM products p
         LEFT JOIN users u ON p.user_id = u.id
         LEFT JOIN stock_history sh ON sh.id = (
@@ -364,6 +368,72 @@ router.post('/bulk-tags', authMiddleware, (req: AuthRequest, res) => {
     }
 
     res.json({ count });
+  } catch (e: any) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// === CSV / Bulk Import ===
+
+router.post('/bulk-import', authMiddleware, (req: AuthRequest, res) => {
+  try {
+    const { items } = req.body; // Array of { url, store?, category?, tags? }
+    if (!Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({ error: 'items dizisi gerekli' });
+    }
+
+    // Enforce product limit
+    const PRODUCT_LIMIT = parseInt(getSetting('product_limit') || '10', 10);
+    const currentCount = (db.prepare('SELECT COUNT(*) as count FROM products WHERE user_id = ?').get(req.userId!) as any).count;
+    
+    if (req.userRole !== 'admin') {
+      const remaining = PRODUCT_LIMIT - currentCount;
+      if (remaining <= 0) {
+        return res.status(403).json({ error: `Ürün limitinize ulaştınız (${PRODUCT_LIMIT})`, code: 'PRODUCT_LIMIT_REACHED' });
+      }
+      // Truncate items to remaining slots
+      if (items.length > remaining) items.length = remaining;
+    }
+
+    let added = 0;
+    let skipped = 0;
+    const errors: string[] = [];
+
+    for (const item of items) {
+      try {
+        const url = (item.url || '').trim();
+        if (!url || !url.startsWith('http')) {
+          skipped++;
+          errors.push(`Geçersiz URL: ${url.substring(0, 50)}`);
+          continue;
+        }
+
+        // Check duplicate
+        const exists = db.prepare('SELECT id FROM products WHERE url = ? AND user_id = ?').get(url, req.userId!);
+        if (exists) {
+          skipped++;
+          continue;
+        }
+
+        // Auto-detect store
+        let store = (item.store || '').toLowerCase();
+        if (!store) {
+          if (url.includes('trendyol.com')) store = 'trendyol';
+          else if (url.includes('amazon.com.tr') || url.includes('amazon.tr')) store = 'amazon';
+          else store = 'generic';
+        }
+
+        db.prepare(
+          "INSERT INTO products (user_id, url, store, category, tags, created_at) VALUES (?, ?, ?, ?, ?, datetime('now', 'localtime'))"
+        ).run(req.userId!, url, store, item.category || null, item.tags || null);
+        added++;
+      } catch (e: any) {
+        skipped++;
+        errors.push(e.message);
+      }
+    }
+
+    res.json({ added, skipped, errors: errors.slice(0, 5) });
   } catch (e: any) {
     res.status(500).json({ error: e.message });
   }

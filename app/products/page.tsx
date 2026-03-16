@@ -6,7 +6,7 @@ import Link from 'next/link';
 import {
     Plus, Search, Loader2, Download, Package, PackageX,
     Trash2, Tag, ChevronDown, CheckSquare, Square, Clock,
-    AlertCircle, Filter
+    AlertCircle, Filter, FileUp, TrendingDown
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { API_URL, getAuthHeaders, getProxyImageUrl } from '@/lib/api';
@@ -25,6 +25,7 @@ type Product = {
     last_price: number | null;
     last_checked_at: string | null;
     last_source: string | null;
+    previous_price: number | null;
     owner_email?: string;
     lastStatus?: { inStock: boolean; price?: number | null; source: string; checked_at: string };
 };
@@ -35,6 +36,7 @@ export default function ProductsPage() {
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedCategory, setSelectedCategory] = useState('Tümü');
+    const [stockFilter, setStockFilter] = useState<'all' | 'inStock' | 'outOfStock' | 'priceDown'>('all');
     const [isAdmin, setIsAdmin] = useState(false);
     const [showAllProducts, setShowAllProducts] = useState(false);
 
@@ -93,13 +95,23 @@ export default function ProductsPage() {
             (p.tags && p.tags.toLowerCase().includes(q));
 
         const matchesCategory = selectedCategory === 'Tümü' || p.category === selectedCategory;
-        return matchesSearch && matchesCategory;
+
+        let matchesStock = true;
+        if (stockFilter === 'inStock') matchesStock = p.lastStatus?.inStock === true;
+        else if (stockFilter === 'outOfStock') matchesStock = p.lastStatus?.inStock === false;
+        else if (stockFilter === 'priceDown') matchesStock = (p.last_price && p.previous_price && p.last_price < p.previous_price) || false;
+
+        return matchesSearch && matchesCategory && matchesStock;
     });
+
+    // Summary counts for filter pills
+    const inStockCount = products.filter(p => p.lastStatus?.inStock === true).length;
+    const outOfStockCount = products.filter(p => p.lastStatus?.inStock === false).length;
+    const priceDownCount = products.filter(p => p.last_price && p.previous_price && p.last_price < p.previous_price).length;
 
     const categories = ['Tümü', 'Elektronik', 'Giyim', 'Ev & Yaşam', 'Kozmetik', 'Spor & Outdoor', 'Diğer'];
 
     const toggleSelect = (id: number, e: React.MouseEvent) => {
-        e.stopPropagation();
         e.preventDefault();
         const next = new Set(selectedIds);
         if (next.has(id)) next.delete(id);
@@ -228,6 +240,12 @@ export default function ProductsPage() {
                             <Download className="w-4 h-4" /> CSV
                         </button>
                         <Link
+                            href="/import"
+                            className="inline-flex items-center gap-2 bg-slate-50 text-slate-700 px-4 py-2 rounded-xl border border-slate-200 hover:bg-white hover:border-indigo-200 transition font-medium text-sm shadow-sm"
+                        >
+                            <FileUp className="w-4 h-4" /> İçe Aktar
+                        </Link>
+                        <Link
                             href="/add"
                             className="inline-flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-xl hover:bg-indigo-700 transition font-medium text-sm shadow-sm"
                         >
@@ -235,6 +253,30 @@ export default function ProductsPage() {
                         </Link>
                     </div>
                 </div>
+            </div>
+
+            {/* Stock Status Filter Pills */}
+            <div className="flex items-center gap-2 flex-wrap">
+                <Filter className="w-4 h-4 text-slate-400" />
+                {[
+                    { key: 'all' as const, label: 'Tümü', count: products.length },
+                    { key: 'inStock' as const, label: '🟢 Stokta', count: inStockCount },
+                    { key: 'outOfStock' as const, label: '🔴 Tükenen', count: outOfStockCount },
+                    { key: 'priceDown' as const, label: '📉 Fiyatı Düştü', count: priceDownCount },
+                ].map((f) => (
+                    <button
+                        key={f.key}
+                        onClick={() => setStockFilter(f.key)}
+                        className={cn(
+                            "px-3 py-1.5 text-xs font-semibold rounded-lg transition-all border",
+                            stockFilter === f.key
+                                ? "bg-indigo-50 text-indigo-600 border-indigo-200 shadow-sm"
+                                : "bg-white text-slate-500 border-slate-200 hover:bg-slate-50 hover:text-slate-700"
+                        )}
+                    >
+                        {f.label} <span className="ml-1 text-[10px] opacity-70">{f.count}</span>
+                    </button>
+                ))}
             </div>
 
             {/* Category Tabs */}
@@ -411,9 +453,17 @@ export default function ProductsPage() {
                                             </div>
                                             <div className="text-right">
                                                 <p className="text-[10px] text-slate-400 font-medium uppercase tracking-tight">Son Fiyat</p>
-                                                <p className="text-sm font-bold text-slate-900">
-                                                    {status?.price ? `${status.price.toLocaleString('tr-TR')} ₺` : '---'}
-                                                </p>
+                                                <div className="flex items-center justify-end gap-1.5">
+                                                    {product.last_price && product.previous_price && product.last_price < product.previous_price && (
+                                                        <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-1 py-0.5 rounded flex items-center gap-0.5 animate-bounce-subtle">
+                                                            <TrendingDown className="w-2.5 h-2.5" />
+                                                            %{Math.round((product.previous_price - product.last_price) / product.previous_price * 100)}
+                                                        </span>
+                                                    )}
+                                                    <p className="text-sm font-bold text-slate-900">
+                                                        {status?.price ? `${status.price.toLocaleString('tr-TR')} ₺` : '---'}
+                                                    </p>
+                                                </div>
                                             </div>
                                         </div>
 

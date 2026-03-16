@@ -316,8 +316,8 @@ export default function ProductDetail() {
               </select>
             </div>
             <div>
-              <label className="block text-xs font-medium text-slate-500 mb-1">CSS Seçici</label>
-              <input value={editSelector} onChange={(e) => setEditSelector(e.target.value)} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none" placeholder="Opsiyonel" />
+              <label className="block text-xs font-medium text-slate-500 mb-1">Beden</label>
+              <input value={editSize} onChange={(e) => setEditSize(e.target.value)} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none" placeholder="M, L, XL..." />
             </div>
             <div>
               <label className="block text-xs font-medium text-slate-500 mb-1">Kategori</label>
@@ -375,11 +375,7 @@ export default function ProductDetail() {
               )}
             </div>
 
-            <div className="w-full pt-4 border-t border-slate-100 grid grid-cols-2 gap-4">
-              <div>
-                <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider block mb-1">Seçici</span>
-                <span className="text-sm font-medium text-slate-700">{product.selector || 'Yok'}</span>
-              </div>
+            <div className="w-full pt-4 border-t border-slate-100">
               <div>
                 <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider block mb-1">Beden</span>
                 <span className="text-sm font-medium text-slate-700">{(product as any).size || 'Tümü'}</span>
@@ -407,21 +403,33 @@ export default function ProductDetail() {
               const min = Math.min(...prices);
               const max = Math.max(...prices);
               const avg = prices.reduce((a, b) => a + b, 0) / prices.length;
+              const first = prices[0];
+              const last = prices[prices.length - 1];
+              const changePct = first > 0 ? ((last - first) / first * 100).toFixed(1) : '0';
+              const isDown = last < first;
               return (
-                <div className="grid grid-cols-3 gap-2 pt-4 border-t border-white/20">
-                  <div className="text-center">
-                    <div className="text-[10px] uppercase tracking-wider opacity-60">Min</div>
-                    <div className="text-sm font-bold">{min.toLocaleString('tr-TR')} ₺</div>
+                <>
+                  {/* Change Badge */}
+                  <div className="flex items-center justify-center gap-2 pt-3 pb-1">
+                    <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold ${isDown ? 'bg-emerald-500/20 text-emerald-200' : last > first ? 'bg-rose-500/20 text-rose-200' : 'bg-white/10 text-white/60'}`}>
+                      {isDown ? '↓' : last > first ? '↑' : '='} {changePct}%
+                    </span>
                   </div>
-                  <div className="text-center">
-                    <div className="text-[10px] uppercase tracking-wider opacity-60">Ort</div>
-                    <div className="text-sm font-bold">{avg.toLocaleString('tr-TR', { maximumFractionDigits: 0 })} ₺</div>
+                  <div className="grid grid-cols-3 gap-2 pt-3 border-t border-white/20">
+                    <div className="text-center">
+                      <div className="text-[10px] uppercase tracking-wider opacity-60">Min</div>
+                      <div className="text-sm font-bold">{min.toLocaleString('tr-TR')} ₺</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-[10px] uppercase tracking-wider opacity-60">Ort</div>
+                      <div className="text-sm font-bold">{avg.toLocaleString('tr-TR', { maximumFractionDigits: 0 })} ₺</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-[10px] uppercase tracking-wider opacity-60">Max</div>
+                      <div className="text-sm font-bold">{max.toLocaleString('tr-TR')} ₺</div>
+                    </div>
                   </div>
-                  <div className="text-center">
-                    <div className="text-[10px] uppercase tracking-wider opacity-60">Max</div>
-                    <div className="text-sm font-bold">{max.toLocaleString('tr-TR')} ₺</div>
-                  </div>
-                </div>
+                </>
               );
             })()}
           </div>
