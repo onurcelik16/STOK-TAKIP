@@ -111,10 +111,10 @@ export const TrendyolStore: StoreScraper = {
     });
 
     // 2. Global Script Strategy (Puzzle/Fragment Props)
-    if (price === null) {
+    if (price === null || inStock === null) {
         $('script').each((i, el) => {
             const content = $(el).html() || '';
-            if (content.includes('sellingPrice') || content.includes('__envoy') || content.includes('PRODUCT_DETAIL')) {
+            if (price === null && (content.includes('sellingPrice') || content.includes('__envoy') || content.includes('PRODUCT_DETAIL'))) {
                 // Try to find the price directly via regex in this script
                 const spm = content.match(/"sellingPrice"\s*:\s*([0-9]+(?:\.[0-9]+)?)/);
                 if (spm) price = parseFloat(spm[1]);
@@ -122,6 +122,26 @@ export const TrendyolStore: StoreScraper = {
                 if (price === null) {
                     const pm = content.match(/"price"\s*:\s*([0-9]+(?:\.[0-9]+)?)/);
                     if (pm) price = parseFloat(pm[1]);
+                }
+            }
+
+            // Extract variant stock directly from script tags (Bypasses window block and empty JSON-LD)
+            if (size && inStock === null && content.includes('"variants"')) {
+                const vm = content.match(/"variants"\s*:\s*(\[\{[\s\S]*?\}\])/);
+                if (vm) {
+                    try {
+                        const variants = JSON.parse(vm[1]);
+                        const targetSize = size.toLowerCase();
+                        const variant = variants.find((v: any) => 
+                            v.beautifiedValue?.toLowerCase() === targetSize || 
+                            v.value?.toLowerCase() === targetSize ||
+                            v.attributeValue?.toLowerCase() === targetSize ||
+                            v.attributeValue?.toLowerCase() === `${targetSize} beden`
+                        );
+                        if (variant && variant.inStock !== undefined) {
+                            inStock = variant.inStock;
+                        }
+                    } catch (e) {}
                 }
             }
         });
