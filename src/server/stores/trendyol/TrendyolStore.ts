@@ -87,8 +87,8 @@ export const TrendyolStore: StoreScraper = {
           }
 
           if (size) {
-            const sl = size.toLowerCase();
-            const sm = (item.name || '').toLowerCase().includes(sl) || (item.description || '').toLowerCase().includes(sl) || item.sku === size;
+            const sizePattern = new RegExp(`(?:^|[^a-zA-Z0-9])(${size})(?:[^a-zA-Z0-9]|$)`, 'i');
+            const sm = sizePattern.test(item.name || '') || sizePattern.test(item.description || '') || item.sku === size;
             if (sm && item.offers?.availability) {
                 if (inStock === null) inStock = item.offers.availability.includes('InStock');
             }
