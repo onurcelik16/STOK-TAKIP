@@ -126,22 +126,39 @@ export const TrendyolStore: StoreScraper = {
             }
 
             // Extract variant stock directly from script tags (Bypasses window block and empty JSON-LD)
-            if (size && inStock === null && content.includes('"variants"')) {
-                const vm = content.match(/"variants"\s*:\s*(\[\{[\s\S]*?\}\])/);
-                if (vm) {
-                    try {
-                        const variants = JSON.parse(vm[1]);
-                        const targetSize = size.toLowerCase();
-                        const variant = variants.find((v: any) => 
-                            v.beautifiedValue?.toLowerCase() === targetSize || 
-                            v.value?.toLowerCase() === targetSize ||
-                            v.attributeValue?.toLowerCase() === targetSize ||
-                            v.attributeValue?.toLowerCase() === `${targetSize} beden`
-                        );
-                        if (variant && variant.inStock !== undefined) {
-                            inStock = variant.inStock;
+            if (size && inStock === null && content.includes('"variants":')) {
+                const variantsIdx = content.indexOf('"variants":');
+                if (variantsIdx !== -1) {
+                    const arrayStartIdx = content.indexOf('[', variantsIdx);
+                    if (arrayStartIdx !== -1) {
+                        let brackets = 0;
+                        let arrayString = '';
+                        for (let j = arrayStartIdx; j < content.length; j++) {
+                            const char = content[j];
+                            arrayString += char;
+                            if (char === '[') brackets++;
+                            if (char === ']') brackets--;
+                            
+                            if (brackets === 0) {
+                                try {
+                                    const variants = JSON.parse(arrayString);
+                                    const targetSize = size.toString().toLowerCase();
+                                    const variant = variants.find((v: any) => 
+                                        v.beautifiedValue?.toString().toLowerCase() === targetSize || 
+                                        v.value?.toString().toLowerCase() === targetSize ||
+                                        v.attributeValue?.toString().toLowerCase() === targetSize ||
+                                        v.attributeValue?.toString().toLowerCase() === `${targetSize} beden` ||
+                                        v.attributeValue?.toString().toLowerCase() === `${targetSize} numara` ||
+                                        v.value?.toString().toLowerCase() === `${targetSize} numara`
+                                    );
+                                    if (variant && variant.inStock !== undefined) {
+                                        inStock = variant.inStock;
+                                    }
+                                } catch (e) {}
+                                break;
+                            }
                         }
-                    } catch (e) {}
+                    }
                 }
             }
         });
