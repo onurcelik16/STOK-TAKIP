@@ -188,16 +188,31 @@ export const GenericStore: StoreScraper = {
                 // ============================================================
                 if (inStock === null && size) {
                     const targetSize = size.toLowerCase().trim();
-                    $('button, span, div, li, option').each((i, el) => {
+                    $('button, span, div, li, option, a, label').each((i, el) => {
                         const $el = $(el);
                         const text = $el.text().toLowerCase().trim();
-                        if (text === targetSize || text.includes(` ${targetSize}`) || text.includes(`${targetSize} `)) {
+                        
+                        // Use word boundary or exact match for small labels like M, S, 38
+                        const isMatch = text === targetSize || 
+                                       text === `beden: ${targetSize}` || 
+                                       text === `size: ${targetSize}` ||
+                                       new RegExp(`\\b${targetSize}\\b`).test(text);
+
+                        if (isMatch) {
                             const classes = ($el.attr('class') || '') + ' ' + ($el.parent().attr('class') || '');
                             const isDisabled = $el.prop('disabled') || $el.attr('disabled') !== undefined;
-                            const hasSoldOutClass = /sold-out|out-of-stock|tükendi|mevcut-degil|passive|disabled/i.test(classes);
+                            const hasSoldOutClass = /sold-out|out-of-stock|tükendi|mevcut-degil|passive|disabled|non-stock/i.test(classes);
+                            
                             if (hasSoldOutClass || isDisabled) {
                                 inStock = false;
-                                return false;
+                                return false; // break loop
+                            } else {
+                                // If we found the specific size and it's NOT disabled, it's a very good sign
+                                // but we don't set inStock = true immediately unless we see an 'active' or 'selected' indicator
+                                // or if there's no other general stock info.
+                                if (/active|selected|current|focus/i.test(classes)) {
+                                    inStock = true;
+                                }
                             }
                         }
                     });
@@ -212,18 +227,18 @@ export const GenericStore: StoreScraper = {
                         || bodyText.includes('add to cart')
                         || bodyText.includes('satın al')
                         || bodyText.includes('buy now')
-                        || $('button, [data-test-id]').filter((_, el) => /sepet|cart|buy|satın/i.test($(el).text())).length > 0;
+                        || $('button, [data-test-id], .add-to-cart, .buy-button').filter((_, el) => /sepet|cart|buy|satın/i.test($(el).text())).length > 0;
+                    
                     const soldOut = bodyText.includes('tükendi')
                         || bodyText.includes('stokta yok')
                         || bodyText.includes('sold out')
                         || bodyText.includes('out of stock')
                         || bodyText.includes('mevcut değil');
                     
-                    if (size) {
-                        if (soldOut) inStock = false;
-                    } else {
-                        if (soldOut) inStock = false;
-                        else if (hasAddToCart) inStock = true;
+                    if (soldOut && !hasAddToCart) {
+                        inStock = false;
+                    } else if (hasAddToCart) {
+                        inStock = true;
                     }
                 }
 
