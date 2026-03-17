@@ -157,9 +157,15 @@ export const TrendyolStore: StoreScraper = {
 
     // In-stock Heuristics
     if (inStock === null) {
-      const hasBuy = $('.add-to-basket-button').length > 0 || $('.add-to-bs-tx').length > 0;
-      const isOut = $('.sold-out').length > 0 || $('.tükendi').length > 0 || $('.stokta-yok').length > 0;
-      inStock = hasBuy && !isOut;
+      if (size) {
+        // If size was requested but not found in variants/LD-JSON above, we should assume it's out of stock
+        // or the size label is wrong. To be safe for the user, if strict size check fails, we mark as false.
+        inStock = false;
+      } else {
+        const hasBuy = $('.add-to-basket-button').length > 0 || $('.add-to-bs-tx').length > 0;
+        const isOut = $('.sold-out').length > 0 || $('.tükendi').length > 0 || $('.stokta-yok').length > 0;
+        inStock = hasBuy && !isOut;
+      }
     }
 
     // Price Heuristics
