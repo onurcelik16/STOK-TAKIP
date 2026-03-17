@@ -78,6 +78,8 @@ export const TrendyolStore: StoreScraper = {
         const p = findPriceDeep(data);
         if (p !== null && price === null) price = p;
         
+        let sizeMatchFound = false;
+
         let items: any[] = Array.isArray(data) ? data : (data.hasVariant ? [data, ...data.hasVariant] : [data]);
         for (const item of items) {
           if (!productName && item.name) productName = item.name;
@@ -87,14 +89,23 @@ export const TrendyolStore: StoreScraper = {
           }
 
           if (size) {
+            // "L", "L Beden", "L Size", "Large" etc.
+            // Check word boundary, but also allow typical variant suffixes
             const sizePattern = new RegExp(`(?:^|[^a-zA-Z0-9])(${size})(?:[^a-zA-Z0-9]|$)`, 'i');
-            const sm = sizePattern.test(item.name || '') || sizePattern.test(item.description || '') || item.sku === size;
+            const sm = sizePattern.test(item.name || '') || sizePattern.test(item.description || '') || item.sku === size || item.name?.toLowerCase() === size.toLowerCase();
             if (sm && item.offers?.availability) {
-                if (inStock === null) inStock = item.offers.availability.includes('InStock');
+                inStock = item.offers.availability.includes('InStock');
+                sizeMatchFound = true; // Mark that we found the specific size
             }
           } else if (item.offers?.availability && inStock === null) {
               inStock = item.offers.availability.includes('InStock');
           }
+        }
+        
+        // If we came here looking for a specific size, and NEVER found it in the JSON-LD items,
+        // it's highly likely it's completely out of stock/removed.
+        if (size && !sizeMatchFound && inStock === true) {
+             inStock = null; // Reset it so it can try fallback methods, or default to false
         }
       } catch (e) { }
     });
@@ -126,7 +137,11 @@ export const TrendyolStore: StoreScraper = {
           if (inStock === null && config.product) {
               if (size && config.product.variants) {
                   const targetSize = size.toLowerCase();
-                  const variant = config.product.variants.find((v: any) => v.attributeValue?.toLowerCase() === targetSize || v.value?.toLowerCase() === targetSize);
+                  const variant = config.product.variants.find((v: any) => 
+                      v.attributeValue?.toLowerCase() === targetSize || 
+                      v.value?.toLowerCase() === targetSize ||
+                      v.attributeValue?.toLowerCase() === `${targetSize} beden`
+                  );
                   if (variant) inStock = variant.inStock;
               }
               if (inStock === null) inStock = config.product.inStock;
