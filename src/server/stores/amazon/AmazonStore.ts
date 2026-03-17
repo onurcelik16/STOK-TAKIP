@@ -16,8 +16,8 @@ function extractPrice(text: string): number | null {
 
 export const AmazonStore: StoreScraper = {
     name: 'amazon',
-    async checkProduct({ url, size }) {
-        console.log(`[AmazonStore] Checking ${url}${size ? ` (Size: ${size})` : ''}`);
+    async checkProduct({ url }) {
+        console.log(`[AmazonStore] Checking ${url}`);
 
         let inStock: boolean | null = null;
         let price: number | null = null;
@@ -41,15 +41,6 @@ export const AmazonStore: StoreScraper = {
             if (resp.status === 200) {
                 const html = resp.data as string;
                 const $ = cheerio.load(html);
-
-                // Check size match if provided
-                if (size) {
-                    const activeSize = $('#variation_size_name .selection').text().trim().toLowerCase() ||
-                                     $('#inline-twister-expanded-dimension-text-size_name').text().trim().toLowerCase();
-                    if (activeSize && !activeSize.includes(size.toLowerCase()) && !size.toLowerCase().includes(activeSize)) {
-                        console.log(`[AmazonStore] Possible size mismatch: wanted ${size}, found ${activeSize}`);
-                    }
-                }
 
                 // Check availability text
                 const availabilityText = $('#availability span').text().trim().toLowerCase();

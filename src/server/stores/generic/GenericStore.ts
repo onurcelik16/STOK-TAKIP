@@ -72,8 +72,8 @@ function findProducts(data: any): any[] {
 
 export const GenericStore: StoreScraper = {
     name: 'generic',
-    async checkProduct({ url, size }) {
-        console.log(`[GenericStore] Checking ${url}${size ? ` (Size: ${size})` : ''}`);
+    async checkProduct({ url }) {
+        console.log(`[GenericStore] Checking ${url}`);
 
         let inStock: boolean | null = null;
         let price: number | null = null;
@@ -112,22 +112,7 @@ export const GenericStore: StoreScraper = {
                                 const img = Array.isArray(product.image) ? product.image[0] : product.image;
                                 imageUrl = typeof img === 'string' ? img : (img?.contentUrl || img?.url || null);
                             }
-
-                            // Variant check if size is provided
-                            if (size && product.hasVariant) {
-                                const variants = Array.isArray(product.hasVariant) ? product.hasVariant : [product.hasVariant];
-                                const targetSize = size.toLowerCase();
-                                const variant = variants.find((v: any) => 
-                                    (v.name && v.name.toLowerCase().includes(targetSize)) ||
-                                    (v.sku && v.sku.toLowerCase() === targetSize)
-                                );
-                                if (variant && variant.offers) {
-                                    const vOffers = Array.isArray(variant.offers) ? variant.offers : [variant.offers];
-                                    inStock = vOffers.some((o: any) => String(o.availability).includes('InStock'));
-                                }
-                            }
-
-                            if (product.offers && inStock === null) {
+                            if (product.offers) {
                                 const offers = Array.isArray(product.offers) ? product.offers : [product.offers];
                                 for (const offer of offers) {
                                     if (offer.availability && inStock === null) {
@@ -161,6 +146,7 @@ export const GenericStore: StoreScraper = {
                             const extracted = extractPrice(content);
                             if (extracted && extracted > 0) {
                                 price = extracted;
+                                console.log(`[GenericStore] Price from meta tag ${sel}: ${price}`);
                                 break;
                             }
                         }
@@ -184,42 +170,7 @@ export const GenericStore: StoreScraper = {
                 }
 
                 // ============================================================
-                // 4. DOM heuristics for stock (Size-specific)
-                // ============================================================
-                if (inStock === null && size) {
-                    const targetSize = size.toLowerCase().trim();
-                    $('button, span, div, li, option, a, label').each((i, el) => {
-                        const $el = $(el);
-                        const text = $el.text().toLowerCase().trim();
-                        
-                        // Use word boundary or exact match for small labels like M, S, 38
-                        const isMatch = text === targetSize || 
-                                       text === `beden: ${targetSize}` || 
-                                       text === `size: ${targetSize}` ||
-                                       new RegExp(`\\b${targetSize}\\b`).test(text);
-
-                        if (isMatch) {
-                            const classes = ($el.attr('class') || '') + ' ' + ($el.parent().attr('class') || '');
-                            const isDisabled = $el.prop('disabled') || $el.attr('disabled') !== undefined;
-                            const hasSoldOutClass = /sold-out|out-of-stock|tükendi|mevcut-degil|passive|disabled|non-stock/i.test(classes);
-                            
-                            if (hasSoldOutClass || isDisabled) {
-                                inStock = false;
-                                return false; // break loop
-                            } else {
-                                // If we found the specific size and it's NOT disabled, it's a very good sign
-                                // but we don't set inStock = true immediately unless we see an 'active' or 'selected' indicator
-                                // or if there's no other general stock info.
-                                if (/active|selected|current|focus/i.test(classes)) {
-                                    inStock = true;
-                                }
-                            }
-                        }
-                    });
-                }
-
-                // ============================================================
-                // 5. DOM heuristics for stock (General)
+                // 4. DOM heuristics for stock
                 // ============================================================
                 if (inStock === null) {
                     const bodyText = $('body').text().toLowerCase();
@@ -227,58 +178,109 @@ export const GenericStore: StoreScraper = {
                         || bodyText.includes('add to cart')
                         || bodyText.includes('satın al')
                         || bodyText.includes('buy now')
-                        || $('button, [data-test-id], .add-to-cart, .buy-button').filter((_, el) => /sepet|cart|buy|satın/i.test($(el).text())).length > 0;
-                    
+                        || $('button, [data-test-id]').filter((_, el) => /sepet|cart|buy|satın/i.test($(el).text())).length > 0;
                     const soldOut = bodyText.includes('tükendi')
                         || bodyText.includes('stokta yok')
                         || bodyText.includes('sold out')
                         || bodyText.includes('out of stock')
                         || bodyText.includes('mevcut değil');
-                    
-                    if (soldOut && !hasAddToCart) {
-                        inStock = false;
-                    } else if (hasAddToCart) {
-                        inStock = true;
-                    }
+                    if (soldOut) inStock = false;
+                    else if (hasAddToCart) inStock = true;
                 }
 
                 // ============================================================
-                // 6. DOM heuristics for price (extensive selectors)
+                // 5. DOM heuristics for price (extensive selectors)
                 // ============================================================
                 if (price === null) {
                     const priceSelectors = [
-                        '[itemprop="price"]', '.product-price', '.product_price', '.productPrice',
-                        '.price-current', '.current-price', '.sale-price', '.new-price', '.price-new',
-                        '.price', '.urun-fiyat', '.fiyat', '#price', '.product-detail-price',
-                        '.product-info__price', '.price-box .price', '.product__price',
-                        '[data-product-price]', '.ProductMeta__Price', '.woocommerce-Price-amount',
-                        'ins .woocommerce-Price-amount', '.summary .price', '#product-price',
-                        '.price-group', 'span[data-price]', '[data-test="product-price"]',
+                        // Standard itemprop
+                        '[itemprop="price"]',
+                        // Common class names used by popular e-commerce platforms
+                        '.product-price',
+                        '.product_price',
+                        '.productPrice',
+                        '.price-current',
+                        '.current-price',
+                        '.sale-price',
+                        '.new-price',
+                        '.price-new',
+                        '.price',
+                        '.urun-fiyat',
+                        '.fiyat',
+                        '#price',
+                        // Gratis-specific
+                        '.product-detail-price',
+                        '.product-info__price',
+                        '.price-box .price',
+                        // Shopify patterns
+                        '.product__price',
+                        '[data-product-price]',
+                        '.ProductMeta__Price',
+                        // WooCommerce patterns
+                        '.woocommerce-Price-amount',
+                        'ins .woocommerce-Price-amount',
+                        '.summary .price',
+                        // OpenCart patterns
+                        '#product-price',
+                        '.price-group',
+                        // General
+                        'span[data-price]',
+                        '[data-test="product-price"]',
+                        '[class*="price"]:not(script):not(style)',
                     ];
+
                     for (const sel of priceSelectors) {
                         try {
                             const el = $(sel).first();
                             if (el.length === 0) continue;
+                            // Try content attribute first (for itemprop), then text
                             const content = el.attr('content') || el.attr('data-price') || el.attr('data-product-price') || el.text().trim();
                             if (content) {
                                 const extracted = extractPrice(content);
                                 if (extracted && extracted > 0) {
                                     price = extracted;
+                                    console.log(`[GenericStore] Price from selector "${sel}": ${price}`);
                                     break;
                                 }
                             }
-                        } catch (e) { /* ignore */ }
+                        } catch (e) { /* skip selector errors */ }
                     }
                 }
+
+                // ============================================================
+                // 6. Last resort: regex scan for price patterns in body text
+                // ============================================================
+                if (price === null) {
+                    const bodyHtml = $.html();
+                    // Look for TL/₺ prices in the HTML
+                    const tlPrices = bodyHtml.match(/([0-9]{1,3}(?:\.[0-9]{3})*,[0-9]{2})\s*(?:TL|₺)/g);
+                    if (tlPrices && tlPrices.length > 0) {
+                        // Pick the first reasonable price
+                        for (const p of tlPrices) {
+                            const extracted = extractPrice(p);
+                            if (extracted && extracted > 1) {
+                                price = extracted;
+                                console.log(`[GenericStore] Price from regex scan: ${price}`);
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                console.log(`[GenericStore] Final: inStock=${inStock}, price=${price}, name=${productName?.substring(0, 50)}, image=${imageUrl ? 'yes' : 'no'}`);
+            } else {
+                console.warn(`[GenericStore] HTTP ${resp.status} for ${url}`);
             }
         } catch (e: any) {
             console.warn(`[GenericStore] Failed: ${e.message}`);
         }
 
         return {
-            inStock: inStock ?? false, price,
-            source: 'http' as const, size: size || null,
-            productName, imageUrl,
+            inStock: inStock ?? false,
+            price,
+            source: 'http' as const,
+            productName,
+            imageUrl,
         };
     },
 };

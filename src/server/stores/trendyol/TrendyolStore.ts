@@ -157,40 +157,9 @@ export const TrendyolStore: StoreScraper = {
 
     // In-stock Heuristics
     if (inStock === null) {
-      if (size) {
-        const targetSize = size.toLowerCase();
-        // Look for size buttons in DOM if metadata check failed
-        const sizeElements = $('.sp-itm, .variant-item, .size-variant');
-        let sizeFound = false;
-        
-        sizeElements.each((i, el) => {
-          const $el = $(el);
-          const text = $el.text().toLowerCase().trim();
-          if (text === targetSize || text.includes(targetSize)) {
-            sizeFound = true;
-            const classes = $el.attr('class') || '';
-            // Trendyol usually uses 'passive', 'so', or 'so-v' for out of stock variants
-            if (classes.includes('passive') || classes.includes('so') || classes.includes('disabled')) {
-              inStock = false;
-            } else {
-              inStock = true;
-            }
-            return false; // break
-          }
-        });
-
-        if (!sizeFound) {
-          // If we couldn't find the specific size element at all, 
-          // fallback to general page stock but be suspicious
-          const hasBuy = $('.add-to-basket-button').length > 0 || $('.add-to-bs-tx').length > 0;
-          const isOut = $('.sold-out').length > 0 || $('.tükendi').length > 0 || $('.stokta-yok').length > 0;
-          inStock = hasBuy && !isOut;
-        }
-      } else {
-        const hasBuy = $('.add-to-basket-button').length > 0 || $('.add-to-bs-tx').length > 0;
-        const isOut = $('.sold-out').length > 0 || $('.tükendi').length > 0 || $('.stokta-yok').length > 0;
-        inStock = hasBuy && !isOut;
-      }
+      const hasBuy = $('.add-to-basket-button').length > 0 || $('.add-to-bs-tx').length > 0;
+      const isOut = $('.sold-out').length > 0 || $('.tükendi').length > 0 || $('.stokta-yok').length > 0;
+      inStock = hasBuy && !isOut;
     }
 
     // Price Heuristics
