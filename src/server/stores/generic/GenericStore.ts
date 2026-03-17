@@ -72,8 +72,8 @@ function findProducts(data: any): any[] {
 
 export const GenericStore: StoreScraper = {
     name: 'generic',
-    async checkProduct({ url }) {
-        console.log(`[GenericStore] Checking ${url}`);
+    async checkProduct({ url, size }) {
+        console.log(`[GenericStore] Checking ${url}${size ? ` for size ${size}` : ''}`);
 
         let inStock: boolean | null = null;
         let price: number | null = null;
@@ -115,6 +115,19 @@ export const GenericStore: StoreScraper = {
                             if (product.offers) {
                                 const offers = Array.isArray(product.offers) ? product.offers : [product.offers];
                                 for (const offer of offers) {
+                                    // If a specific size is requested, check if this offer matches
+                                    if (size) {
+                                        const offerName = String(offer.name || offer.itemOffered?.name || '');
+                                        const offerSku = String(offer.sku || offer.itemOffered?.sku || '');
+                                        
+                                        // Word boundary check to avoid partial matches (e.g. "S" matching "Small")
+                                        const sizePattern = new RegExp(`(?:^|[^a-zA-Z0-9])(${size})(?:[^a-zA-Z0-9]|$)`, 'i');
+                                        
+                                        if (!sizePattern.test(offerName) && !sizePattern.test(offerSku)) {
+                                            continue; // Skip this offer as it doesn't match the requested size
+                                        }
+                                    }
+
                                     if (offer.availability && inStock === null) {
                                         inStock = String(offer.availability).includes('InStock');
                                     }
