@@ -1,78 +1,63 @@
-## Stock Tracker (Node.js + TypeScript + Next.js)
+# 🚀 Stock Tracker
 
-Stok/fiyat takip sistemi: Express API, SQLite, cron job, web panel ve eklenti yapıda scraper.
+[English](#english) | [Türkçe](#türkçe)
 
-### Kurulum
+---
 
-```bash
-npm install
-```
+<a name="english"></a>
+## 🌍 English Version
 
-### Geliştirme
+A professional, full-stack monitoring system designed to track product availability and price fluctuations across multiple e-commerce platforms. Built with **Next.js 14/15**, **TypeScript**, and **Node.js**, featuring real-time notifications via **Telegram** and **Email**.
 
-**Seçenek 1: Sadece API (port 3000)**
-```bash
-npm run dev:api
-```
+### ⚖️ Legal Disclaimer & Case Study Note
+> [!IMPORTANT]
+> **This project is a Technical Case Study developed for educational and portfolio purposes only.** It is designed to demonstrate proficiency in system architecture, web automation, and real-time data processing. 
+> - **Not for Commercial Use:** This software is not intended to be used for commercial data scraping or to harm the operations of target e-commerce platforms.
+> - **Compliance:** Users are responsible for ensuring compliance with the Terms of Service (ToS) of any website they interact with.
+> - **Ethical Scraping:** The system includes rate-limiting and respects standard technical boundaries to minimize server load on target platforms.
 
-**Seçenek 2: Sadece Web Panel (port 3001)**
-```bash
-npm run dev:web
-```
+### ✨ Key Features
+- **🔍 Intelligent Scraping:** Automated data extraction using **Playwright/Puppeteer** with fallback Regex parsing for high reliability.
+- **📈 Price History & Analytics:** Interactive price data visualization using **Chart.js** to track market trends.
+- **🔔 Multi-Channel Notifications:** Instant alerts via **Telegram Bot API** and **E-mail (Brevo/Resend)**.
+- **🔐 User Management:** Secure authentication with **Email Verification** and user-specific dashboards.
+- **📊 Real-time Dashboard:** Modern UI built with **Tailwind CSS**.
 
-**Seçenek 3: Her İkisi Birlikte (Önerilen)**
-```bash
-npm run dev:all
-```
+---
 
-### Ortam değişkenleri
+<a name="türkçe"></a>
+## 🇹🇷 Türkçe Versiyon
 
-Bir `.env` dosyası oluşturun:
+Birden fazla e-ticaret platformunda ürün bulunabilirliğini ve fiyat dalgalanmalarını takip etmek için tasarlanmış profesyonel, full-stack bir izleme sistemidir. **Next.js 14/15**, **TypeScript** ve **Node.js** ile geliştirilmiş olup, **Telegram** ve **E-posta** üzerinden gerçek zamanlı bildirimler sunar.
 
-```
-PORT=3000
-DB_PATH=./data/app.sqlite
-# her 10 dk
-CRON=*/10 * * * *
-# Browser render için (Trendyol için önerilir)
-RENDER_BROWSER=true
-```
+### ⚖️ Hukuki Uyarı ve Vaka Çalışması Notu
+> [!IMPORTANT]
+> **Bu proje, yalnızca eğitim ve portfolyo amaçlı geliştirilmiş bir Teknik Vaka Çalışmasıdır (Case Study).** Sistem mimarisi, web otomasyonu ve gerçek zamanlı veri işleme yetkinliklerini sergilemek amacıyla tasarlanmıştır.
+> - **Ticari Amaç Güdülmez:** Bu yazılım, ticari veri madenciliği yapmak veya hedef platformların işleyişine zarar vermek amacıyla kullanılamaz.
+> - **Uyumluluk:** Kullanıcılar, etkileşimde bulundukları web sitelerinin Kullanım Koşullarına (ToS) uymaktan bizzat sorumludur.
+> - **Etik Veri Çekme:** Sistem, hedef platformlardaki sunucu yükünü minimize etmek için hız sınırlandırması (rate-limiting) içerir ve teknik sınırlara saygı duyar.
 
-### API
+### ✨ Temel Özellikler
+- **🔍 Akıllı Tarama:** Yüksek güvenilirlik için **Playwright/Puppeteer** ve yedek Regex ayrıştırma mekanizması.
+- **📈 Fiyat Geçmişi ve Analiz:** Piyasa trendlerini izlemek için **Chart.js** ile etkileşimli veri görselleştirme.
+- **🔔 Çok Kanallı Bildirimler:** **Telegram Bot API** ve **E-posta (Brevo/Resend)** üzerinden anlık uyarılar.
+- **🔐 Kullanıcı Yönetimi:** **E-posta Doğrulama** ve kullanıcıya özel panellerle güvenli kimlik doğrulama.
+- **📊 Gerçek Zamanlı Panel:** **Tailwind CSS** ile oluşturulmuş modern kullanıcı arayüzü.
 
-- `GET /health` – servis kontrol
-- `GET /products` – kayıtlı ürünler
-- `GET /products/:id` – ürün + son 50 kontrol
-- `POST /products` – ürün ekle
-  - body: `{ "url": string, "store": string, "selector?": string }`
-- `DELETE /products/:id` – siler
+---
 
-`store` için şimdilik `demo` kullanın. `selector` sağlarsanız CSS seçiciye göre stok algılar.
+## 🛠️ Tech Stack / Teknolojiler
+- **Frontend:** Next.js, Tailwind CSS, Chart.js, Lucide Icons
+- **Backend:** Node.js, TypeScript, Playwright, SQLite
+- **Integrations:** Brevo, Resend, Telegram Bot API
+- **DevOps:** Vercel, Railway, GitHub Actions
 
-### Örnek istek
+## 🚀 Getting Started / Başlangıç
+1. `npm install`
+2. `cp .env.example .env` (Fill in the keys / Anahtarları doldurun)
+3. `npm run dev:all`
 
-```bash
-curl -X POST http://localhost:3000/products \
-  -H "Content-Type: application/json" \
-  -d '{
-    "url": "https://example.com/product",
-    "store": "demo",
-    "selector": ".buy-button"
-  }'
-```
+---
 
-### Web Panel
-
-Tarayıcıda `http://localhost:3001` adresine gidin. Özellikler:
-- ✅ Ürün listesi
-- ✅ Yeni ürün ekleme formu
-- ✅ Ürün detay + geçmiş tablosu
-- ✅ Canlı durum göstergesi
-- ✅ Kaynak bilgisi (HTTP/Browser)
-
-### Notifier
-
-Şu an sadece konsola yazar. E-posta/Telegram entegrasyonu eklenebilir.
-
-
-
+## 📄 License
+This project is licensed under the MIT License.

@@ -1,4 +1,4 @@
-# Canlıya Geçiş (Production) Kontrol Listesi
+# Stock Tracker — Canlıya Geçiş (Production) Kontrol Listesi
 
 Projeyi gerçek bir sunucuda (VPS, Heroku, Render vb.) çalıştırmadan önce aşağıdaki adımları tamamladığınızdan emin olun.
 
