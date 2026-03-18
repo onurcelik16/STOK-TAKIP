@@ -16,12 +16,13 @@ A professional, full-stack monitoring system designed to track product availabil
 > - **Compliance:** Users are responsible for ensuring compliance with the Terms of Service (ToS) of any website they interact with.
 > - **Ethical Scraping:** The system includes rate-limiting and respects standard technical boundaries to minimize server load on target platforms.
 
-### ✨ Key Features
-- **🔍 Intelligent Scraping:** Automated data extraction using **Playwright/Puppeteer** with fallback Regex parsing for high reliability.
-- **📈 Price History & Analytics:** Interactive price data visualization using **Chart.js** to track market trends.
-- **🔔 Multi-Channel Notifications:** Instant alerts via **Telegram Bot API** and **E-mail (Brevo/Resend)**.
-- **🔐 User Management:** Secure authentication with **Email Verification** and user-specific dashboards.
-- **📊 Real-time Dashboard:** Modern UI built with **Tailwind CSS**.
+### ✨ Key Features (Detailed)
+- **🔍 Intelligent Variant-Aware Scraping:** Unlike simple scrapers, **Stock Tracker** identifies specific product variants (e.g., Size: M, Color: Black). It parses **JSON-LD** metadata and global JavaScript state to find the exact stock status of the selected variant.
+- **📊 Advanced Price Analytics:** Every check is logged in a time-series database. The dashboard visualizes this data with interactive charts, helping users identify the best time to buy based on historical price floors.
+- **🎯 Precision Price Alerts:** Users can set "Price Drop" alarms. The system monitors prices and triggers an instant alert only when the price hits or falls below the user-defined target.
+- **🔔 Multi-Channel Alert Engine:** Integrated with **Telegram Bot API** for push notifications and **Brevo/Resend** for professional email alerts. Supports user-level notification preferences.
+- **🛡️ Anti-Detection & Fallback:** Uses a multi-layered approach to bypass simple bot detection, including **User-Agent rotation**, **headless browser emulation**, and **Regex-based fallback** for price extraction when structured data is missing.
+- **🧱 Modular Store Adapters:** Features a pluggable architecture (`StoreScraper` interface). Adding support for a new e-commerce site is as simple as creating a new class and implementing the `checkProduct` method.
 
 ---
 
@@ -37,12 +38,15 @@ Birden fazla e-ticaret platformunda ürün bulunabilirliğini ve fiyat dalgalanm
 > - **Uyumluluk:** Kullanıcılar, etkileşimde bulundukları web sitelerinin Kullanım Koşullarına (ToS) uymaktan bizzat sorumludur.
 > - **Etik Veri Çekme:** Sistem, hedef platformlardaki sunucu yükünü minimize etmek için hız sınırlandırması (rate-limiting) içerir ve teknik sınırlara saygı duyar.
 
-### ✨ Temel Özellikler
-- **🔍 Akıllı Tarama:** Yüksek güvenilirlik için **Playwright/Puppeteer** ve yedek Regex ayrıştırma mekanizması.
-- **📈 Fiyat Geçmişi ve Analiz:** Piyasa trendlerini izlemek için **Chart.js** ile etkileşimli veri görselleştirme.
-- **🔔 Çok Kanallı Bildirimler:** **Telegram Bot API** ve **E-posta (Brevo/Resend)** üzerinden anlık uyarılar.
-- **🔐 Kullanıcı Yönetimi:** **E-posta Doğrulama** ve kullanıcıya özel panellerle güvenli kimlik doğrulama.
-- **📊 Gerçek Zamanlı Panel:** **Tailwind CSS** ile oluşturulmuş modern kullanıcı arayüzü.
+### ✨ Temel Özellikler (Detaylı)
+- **🔍 Varyant Duyarlı Akıllı Tarama:** Basit tarayıcıların aksine, **Stock Tracker** ürünün spesifik varyantlarını (Örn: Beden: M, Renk: Siyah) ayırt edebilir. **JSON-LD** meta verilerini ve küresel JavaScript durumlarını analiz ederek seçilen varyantın gerçek stok durumunu bulur.
+- **📊 Gelişmiş Fiyat Analitiği:** Her kontrol zaman serisili bir veritabanına kaydedilir. Panel, bu verileri etkileşimli grafiklerle görselleştirerek kullanıcıların geçmiş fiyat diplerine göre en doğru satın alma zamanını belirlemesine yardımcı olur.
+- **🎯 Hassas Fiyat Alarmları:** Kullanıcılar "Fiyat Düştü" alarmları kurabilir. Sistem fiyatları izler ve yalnızca fiyat kullanıcının tanımladığı hedefe ulaştığında veya altına düştüğünde anlık uyarı tetikler.
+- **🔔 Çok Kanallı Uyarı Motoru:** Push bildirimleri için **Telegram Bot API** ve profesyonel e-posta uyarıları için **Brevo/Resend** ile entegre edilmiştir. Kullanıcı bazlı bildirim tercihlerini destekler.
+- **🛡️ Algılama Engelleme ve Yedekleme:** **User-Agent rotasyonu**, **headless browser simülasyonu** ve yapılandırılmış verilerin eksik olduğu durumlarda fiyat çekmek için **Regex tabanlı yedekleme** dahil olmak üzere çok katmanlı bir yaklaşım kullanır.
+- **🧱 Modüler Mağaza Adaptörleri:** Tak-çalıştır bir mimariye sahiptir (`StoreScraper` arayüzü). Yeni bir e-ticaret sitesi için destek eklemek, yeni bir sınıf oluşturup `checkProduct` metodunu uygulamak kadar basittir.
+
+---
 
 ---
 
