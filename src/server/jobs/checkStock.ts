@@ -4,6 +4,7 @@ import { DemoStore } from '../stores/examples/DemoStore';
 import { TrendyolStore } from '../stores/trendyol/TrendyolStore';
 import { GenericStore } from '../stores/generic/GenericStore';
 import { AmazonStore } from '../stores/amazon/AmazonStore';
+import { GratisStore } from '../stores/gratis/GratisStore';
 import { notifyChange } from '../services/notifier';
 import { logger } from '../utils/logger';
 
@@ -12,6 +13,7 @@ function getScraperByName(name: string) {
   if (key === 'trendyol') return TrendyolStore;
   if (key === 'hepsiburada' || key === 'generic' || key === 'other') return GenericStore;
   if (key === 'amazon') return AmazonStore;
+  if (key === 'gratis') return GratisStore;
   return DemoStore;
 }
 
