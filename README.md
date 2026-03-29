@@ -50,16 +50,39 @@ Birden fazla e-ticaret platformunda ürün bulunabilirliğini ve fiyat dalgalanm
 
 ---
 
+## 🏪 Desteklenen Mağazalar / Supported Stores
+
+| Mağaza | Stok | Fiyat | Beden | Not |
+|---|---|---|---|---|
+| **Trendyol** | ✅ | ✅ | ✅ | JSON-LD + variant parsing |
+| **Amazon TR** | ✅ | ✅ | — | HTTP-only |
+| **Gratis** | ✅ | ✅ | — | En düşük (kampanya) fiyat |
+| **Hepsiburada** | ✅ | ✅ | — | Browser mode önerilir |
+| **Generic** | ✅ | ✅ | ⚠️ | Genel amaçlı, çoğu site |
+
 ## 🛠️ Tech Stack / Teknolojiler
-- **Frontend:** Next.js, Tailwind CSS, Chart.js, Lucide Icons
-- **Backend:** Node.js, TypeScript, Playwright, SQLite
-- **Integrations:** Brevo, Resend, Telegram Bot API
-- **DevOps:** Vercel, Railway, GitHub Actions
+- **Frontend:** Next.js 15, Tailwind CSS, Recharts, Lucide Icons
+- **Backend:** Node.js, TypeScript, Express, Cheerio, Playwright
+- **Database:** SQLite (better-sqlite3, WAL mode)
+- **Integrations:** Telegram Bot API, Brevo, Resend
+- **DevOps:** Railway (backend + DB), GitHub
 
 ## 🚀 Getting Started / Başlangıç
 1. `npm install`
-2. `cp .env.example .env` (Fill in the keys / Anahtarları doldurun)
+2. `.env` dosyası oluştur (aşağıdaki değişkenlere bak)
 3. `npm run dev:all`
+
+### Gerekli Ortam Değişkenleri
+```env
+PORT=3000
+JWT_SECRET=gizli_anahtar_buraya
+DB_PATH=./data/app.sqlite
+TELEGRAM_BOT_TOKEN=         # Telegram bildirimleri için
+BREVO_API_KEY=              # Email bildirimleri için
+FRONTEND_URL=http://localhost:3001
+```
+
+Tüm değişkenler için bkz. [`production_readiness.md`](production_readiness.md)
 
 ---
 

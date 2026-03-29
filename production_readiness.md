@@ -1,5 +1,7 @@
 # Stock Tracker — Canlıya Geçiş (Production) Kontrol Listesi
 
+> Son güncelleme: Mart 2026
+
 Projeyi gerçek bir sunucuda (VPS, Heroku, Render vb.) çalıştırmadan önce aşağıdaki adımları tamamladığınızdan emin olun.
 
 ## 1. Ortam Değişkenleri (.env)
@@ -60,9 +62,21 @@ pm2 start "npm run start:web" --name "stock-web"
 - **Hosting (Render Uyarısı):** Eğer Render kullanacaksanız, SQLite dosyası sunucu her kapandığında sıfırlanır. Canlıda verilerin silinmemesi için Render'da "Disk" (Persistent Storage) eklemeniz veya Render yerine SQLite verilerini silmeyen **Railway** veya bir **VPS** (DigitalOcean, Hetzner vb.) kullanmanız önerilir.
 - **Privacy:** Telegram botunuzun "Privacy Mode" ayarını BotFather'dan kontrol edin.
 
-## 5. Adım Adım Ücretsiz Yayına Alma (Önerilen)
+## 5. Bilinen Güvenlik Sorunları (Düzeltilmesi Gereken)
 
-### A. Backend (API & Data) - Railway.app
+> Bunlar production'a geçmeden önce **mutlaka** düzeltilmeli.
+
+| # | Sorun | Dosya | Çözüm |
+|---|---|---|---|
+| 1 | `cors({ origin: true })` — tüm originlere açık | `src/server/app.ts:44` | `origin: process.env.FRONTEND_URL` yap |
+| 2 | `helmet({ crossOriginResourcePolicy: "cross-origin" })` | `src/server/app.ts:48` | `"same-site"` yap |
+| 3 | Env değişkenleri validate edilmiyor | `src/index.ts` | Zod schema ile başlangıçta kontrol et |
+
+---
+
+## 6. Adım Adım Yayına Alma (Railway — Mevcut Setup)
+
+### A. Backend (API & Data) - Railway.app (Aktif Setup)
 1. [Railway.app](https://railway.app)'e GitHub ile giriş yapın.
 2. **"New Project"** → **"Deploy from GitHub repo"** diyerek bu projeyi seçin.
 3. **Settings** sekmesinden **"Volumes"** kısmına gelin ve `/data` klasörü için bir disk ekleyin (Bu adım verilerin silinmemesi için çok kritik).
