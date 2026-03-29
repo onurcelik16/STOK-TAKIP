@@ -8,7 +8,11 @@ import { GratisStore } from '../stores/gratis/GratisStore';
 import { notifyChange } from '../services/notifier';
 import { logger } from '../utils/logger';
 
-function getScraperByName(name: string) {
+function getScraperByName(name: string, url?: string) {
+  // URL-based auto-detection takes priority (catches products saved as 'generic')
+  if (url) {
+    if (/gratis\.com/i.test(url)) return GratisStore;
+  }
   const key = name.toLowerCase();
   if (key === 'trendyol') return TrendyolStore;
   if (key === 'hepsiburada' || key === 'generic' || key === 'other') return GenericStore;
@@ -70,7 +74,7 @@ export function scheduleStockChecks() {
 
       for (const p of products) {
         const productStart = process.hrtime.bigint();
-        const scraper = getScraperByName(p.store);
+        const scraper = getScraperByName(p.store, p.url);
         try {
           const timeoutMs = process.env.SCRAPER_TIMEOUT_MS ? Number(process.env.SCRAPER_TIMEOUT_MS) : DEFAULT_SCRAPER_TIMEOUT_MS;
           const result = await withTimeout(
